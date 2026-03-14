@@ -27,6 +27,8 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
+const commandHistory = ref([])
+let historyIndex = 0
 const activeVaultWord1 = ref('')
 const activeCulpritId = ref(1001)
 
@@ -85,6 +87,7 @@ onMounted(async () => {
   prompt()
 
   term.onKey(({ key, domEvent }) => {
+    domEvent.preventDefault()
     const code = domEvent.keyCode
 
     if (code === 13) {
@@ -99,18 +102,19 @@ onMounted(async () => {
       handleCommand(cmd)
       inputBuffer = ''
       prompt()
+      prompt()
     } else if (code === 8) {
       // Backspace
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         writeTerminal('\b \b')
       }
-    } else if (code === 67 && domEvent.ctrlKey) {
+    } else if (domEvent.ctrlKey && key.toLowerCase() === 'c') {
       // Ctrl+C
       writelnTerminal('^C')
       inputBuffer = ''
       prompt()
-    } else if (data === '\x1b[A') {
+    } else if (key === 'ArrowUp') {
       // Up arrow — previous command
       if (commandHistory.value.length === 0) return
       if (historyIndex > 0) historyIndex--
@@ -118,7 +122,7 @@ onMounted(async () => {
       clearCurrentInput()
       inputBuffer = prev
       writeTerminal(prev)
-    } else if (data === '\x1b[B') {
+    } else if (key === 'ArrowDown') {
       // Down arrow — next command
       if (historyIndex < commandHistory.value.length - 1) {
         historyIndex++
@@ -131,12 +135,12 @@ onMounted(async () => {
         clearCurrentInput()
         inputBuffer = ''
       }
-    } else if (data === '\x1b[C' || data === '\x1b[D') {
+    } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
       // Left/right arrows — ignore to prevent cursor corruption
-    } else if (data >= ' ' || data === '\t') {
+    } else if ((key && key.length === 1) || key === '\t') {
       // Printable chars — also handles paste (multi-char data)
-      inputBuffer += data
-      writeTerminal(data)
+      inputBuffer += key
+      writeTerminal(key)
       historyIndex = commandHistory.value.length
     }
   })
