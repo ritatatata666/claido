@@ -284,6 +284,7 @@ const showColumnPicker = ref(false)
 const searchInputEl = ref(null)
 const searchSubmitResultById = ref({})
 const activeVaultWord4 = ref('')
+const activeWhistleblowerUserId = ref('')
 
 const showAutocomplete = ref(false)
 const autocompleteIndex = ref(-1)
@@ -327,7 +328,7 @@ function buildIndex(entries) {
       prefix: true,
     },
   })
-  miniSearch.addAll(entries)
+  miniSearch.addAll(entries.map(e => ({ ...e, user: e.user ?? '' })))
 }
 
 function parseKQL(query) {
@@ -671,12 +672,14 @@ function hideAutocompleteDelayed() {
 
 onMounted(async () => {
   const vaultWord4 = resolveVaultWord4()
+  const whistleblowerUserId = resolveWhistleblowerUserId()
   activeVaultWord4.value = vaultWord4
+  activeWhistleblowerUserId.value = whistleblowerUserId
   try {
     const data = await store.enterRoom('search')
-    logs.value = normalizeSearchLogs(Array.isArray(data) ? data : [], vaultWord4)
+    logs.value = normalizeSearchLogs(Array.isArray(data) ? data : [], vaultWord4, whistleblowerUserId)
   } catch (e) {
-    logs.value = getDefaultLogs(vaultWord4)
+    logs.value = getDefaultLogs(vaultWord4, whistleblowerUserId)
   } finally {
     buildIndex(logs.value)
     loading.value = false
@@ -689,6 +692,14 @@ function resolveVaultWord4() {
   const fallback = 'greed'
   console.warn('[NovaSearch] Using fallback vaultWord4 because session value is missing.')
   return fallback
+}
+
+function resolveWhistleblowerUserId() {
+  const employees = Array.isArray(store.sessionState?.employees) ? store.sessionState.employees : []
+  const culpritId = Number(store.sessionState?.culprit?.id)
+  const witness = employees.find(e => Number(e?.id) && Number(e.id) !== culpritId)
+  if (witness?.id) return `${witness.id}`
+  return '1099'
 }
 
 function getHour(log) {
@@ -757,10 +768,10 @@ function applyFilter() {
 
 function submitSearchEvidenceForLog(log) {
   const vaultWord = activeVaultWord4.value
+  const whistleblowerUserId = activeWhistleblowerUserId.value
   const message = String(log?.message || '').toLowerCase()
-  const user = String(log?.user || '').toLowerCase()
   const isWhistle = String(log?.level || '').toUpperCase() === 'ERROR'
-    && (user === 'whistleblower' || message.includes('whistleblower'))
+    && String(log?.user || '').toLowerCase() === whistleblowerUserId.toLowerCase()
     && !!vaultWord
     && message.includes(String(vaultWord).toLowerCase())
     && filteredLogs.value.some(l => l.id === log.id)
@@ -776,37 +787,52 @@ function submitSearchEvidenceForLog(log) {
   store.markRoomComplete('search')
 }
 
-function normalizeSearchLogs(rawLogs, vaultWord4) {
+function normalizeSearchLogs(rawLogs, vaultWord4, whistleblowerUserId) {
   const normalized = rawLogs.map((log, index) => ({
     id: String(log?.id || `log-${String(index + 1).padStart(3, '0')}`),
     timestamp: String(log?.timestamp || ''),
     level: String(log?.level || 'INFO').toUpperCase(),
-    service: String(log?.service || 'api'),
-    user: String(log?.user || ''),
+    service: normalizeService(log?.service),
+    user: normalizeUserId(log?.user, whistleblowerUserId),
     message: String(log?.message || ''),
     ip: String(log?.ip || ''),
   }))
-  return ensureWhistleblowerClue(normalized, vaultWord4)
+  return ensureWhistleblowerClue(normalized, vaultWord4, whistleblowerUserId)
 }
 
-function ensureWhistleblowerClue(entries, vaultWord4) {
+function normalizeService(service) {
+  const normalized = String(service || 'api').toLowerCase()
+  if (normalized === 'whistleblower') return 'vault'
+  return normalized
+}
+
+function normalizeUserId(user, whistleblowerUserId) {
+  const raw = String(user ?? '').trim()
+  const lower = raw.toLowerCase()
+  if (!raw) return null
+  if (lower === 'anonymous' || lower === 'anon') return null
+  if (lower === 'whistleblower') return whistleblowerUserId
+  return raw
+}
+
+function ensureWhistleblowerClue(entries, vaultWord4, whistleblowerUserId) {
   if (!vaultWord4) return entries
 
   const hasValidWhistle = entries.some((log) => {
     const message = String(log.message || '').toLowerCase()
-    const user = String(log.user || '').toLowerCase()
     return String(log.level || '').toUpperCase() === 'ERROR'
-      && (user === 'whistleblower' || message.includes('whistleblower'))
+      && String(log.user || '').toLowerCase() === whistleblowerUserId.toLowerCase()
       && message.includes(vaultWord4)
   })
   if (hasValidWhistle) return entries
 
   const fallbackMessage = `ALERT: Unauthorized vault access flagged by whistleblower. Keyword: ${vaultWord4}.`
   const whistleIndex = entries.findIndex((log) => {
-    const message = String(log.message || '').toLowerCase()
-    const user = String(log.user || '').toLowerCase()
     return String(log.level || '').toUpperCase() === 'ERROR'
-      && (user === 'whistleblower' || message.includes('whistleblower'))
+      && (
+        String(log.user || '').toLowerCase() === whistleblowerUserId.toLowerCase()
+        || String(log.message || '').toLowerCase().includes('whistleblower')
+      )
   })
 
   if (whistleIndex >= 0) {
@@ -814,10 +840,10 @@ function ensureWhistleblowerClue(entries, vaultWord4) {
     console.warn('[NovaSearch] Injected fallback clue word into whistleblower log to keep puzzle solvable.')
     entries[whistleIndex] = {
       ...current,
-      user: 'whistleblower',
+      user: whistleblowerUserId,
       level: 'ERROR',
       message: `${String(current.message || '').trim()} Keyword: ${vaultWord4}`.trim(),
-      service: current.service || 'vault',
+      service: normalizeService(current.service || 'vault'),
     }
     return entries
   }
@@ -827,7 +853,7 @@ function ensureWhistleblowerClue(entries, vaultWord4) {
     timestamp: '2025-03-03T01:33:00',
     level: 'ERROR',
     service: 'vault',
-    user: 'whistleblower',
+    user: whistleblowerUserId,
     message: fallbackMessage,
     ip: '192.168.1.99',
   }
@@ -837,7 +863,7 @@ function ensureWhistleblowerClue(entries, vaultWord4) {
   return entries
 }
 
-function getDefaultLogs(vaultWord4) {
+function getDefaultLogs(vaultWord4, whistleblowerUserId) {
   const base = []
   const services = ['auth', 'api', 'db', 'badge', 'mail']
   const lvls = ['INFO', 'INFO', 'INFO', 'WARN', 'DEBUG']
@@ -847,7 +873,7 @@ function getDefaultLogs(vaultWord4) {
       timestamp: `2025-03-03T${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:00`,
       level: lvls[Math.floor(Math.random() * lvls.length)],
       service: services[Math.floor(Math.random() * services.length)],
-      user: `emp-${1002 + Math.floor(Math.random() * 7)}`,
+      user: `${1002 + Math.floor(Math.random() * 7)}`,
       message: 'Normal system operation',
       ip: `192.168.1.${Math.floor(Math.random() * 200) + 10}`,
     })
@@ -857,11 +883,11 @@ function getDefaultLogs(vaultWord4) {
     timestamp: '2025-03-03T01:33:00',
     level: 'ERROR',
     service: 'vault',
-    user: 'whistleblower',
+    user: whistleblowerUserId,
     message: `ALERT: Unauthorized vault access by employee 1001 at 01:17. Motive marker detected. Keyword: ${vaultWord4}`,
     ip: '192.168.1.99',
   })
-  return normalizeSearchLogs(base, vaultWord4)
+  return normalizeSearchLogs(base, vaultWord4, whistleblowerUserId)
 }
 </script>
 
