@@ -48,24 +48,18 @@ body {
 
 /* Global Blood Splatter Effects */
 /* ── Blood Splatter ── */
-.blood-splatter-global {
+.blood-splatter-container {
   position: fixed;
+  inset: 0;
   pointer-events: none;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* On hub page: splatters on top, not scrollable */
-.is-hub .blood-splatter-global {
   z-index: 9999;
-  opacity: 0.8;
+  overflow: hidden;
 }
 
-/* On landing page: visible and fixed in place */
-.is-landing .blood-splatter-global {
-  z-index: 2;
-  opacity: 0.6;
+.blood-splatter-global {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 .blood-splatter-global img {
