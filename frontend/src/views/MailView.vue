@@ -1,0 +1,350 @@
+<template>
+  <RoomLayout>
+    <div class="mail-view">
+      <!-- Sidebar -->
+      <div class="mail-sidebar">
+        <div class="mail-logo">NovaMail</div>
+        <div class="folder-list">
+          <div
+            v-for="folder in folders"
+            :key="folder"
+            :class="['folder-item', { active: activeFolder === folder }]"
+            @click="activeFolder = folder"
+          >
+            <span class="folder-icon">{{ folderIcons[folder] }}</span>
+            {{ folder }}
+            <span class="folder-count">{{ countFolder(folder) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email list -->
+      <div class="email-list">
+        <div v-if="loading" class="loading-state">
+          <span class="spinner"></span> Loading emails...
+        </div>
+        <div
+          v-for="email in filteredEmails"
+          :key="email.id"
+          :class="['email-row', { unread: !email.isRead, selected: selectedEmail?.id === email.id }]"
+          @click="selectEmail(email)"
+        >
+          <div class="email-from">{{ email.from }}</div>
+          <div class="email-subject">{{ email.subject }}</div>
+          <div class="email-snippet">{{ snippetText(email.body) }}</div>
+          <div class="email-date">{{ formatDate(email.date) }}</div>
+        </div>
+        <div v-if="!loading && filteredEmails.length === 0" class="empty-folder">
+          No messages in {{ activeFolder }}.
+        </div>
+      </div>
+
+      <!-- Email viewer -->
+      <div class="email-viewer">
+        <div v-if="!selectedEmail" class="no-selection">
+          <span>Select an email to read</span>
+        </div>
+        <div v-else class="email-content">
+          <div class="email-header">
+            <h2 class="email-subject-large">{{ selectedEmail.subject }}</h2>
+            <div class="email-meta">
+              <span><strong>From:</strong> {{ selectedEmail.from }}</span>
+              <span><strong>To:</strong> {{ selectedEmail.to }}</span>
+              <span><strong>Date:</strong> {{ formatDateFull(selectedEmail.date) }}</span>
+            </div>
+          </div>
+          <div class="email-body">{{ selectedEmail.body }}</div>
+        </div>
+      </div>
+    </div>
+    <NpcChat npc-id="receptionist" npc-name="Maya Chen" npc-role="Receptionist" />
+  </RoomLayout>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import RoomLayout from '../components/RoomLayout.vue'
+import NpcChat from '../components/NpcChat.vue'
+import { useGameStore } from '../stores/gameStore.js'
+
+const store = useGameStore()
+const emails = ref([])
+const loading = ref(true)
+const selectedEmail = ref(null)
+const activeFolder = ref('inbox')
+
+const folders = ['inbox', 'sent', 'flagged']
+const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
+
+onMounted(async () => {
+  try {
+    const data = await store.enterRoom('mail')
+    emails.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    emails.value = getDefaultEmails()
+  } finally {
+    loading.value = false
+  }
+})
+
+const filteredEmails = computed(() =>
+  emails.value.filter(e => e.folder === activeFolder.value || activeFolder.value === 'flagged')
+)
+
+function countFolder(folder) {
+  return emails.value.filter(e => e.folder === folder).length
+}
+
+function snippetText(body) {
+  return body?.slice(0, 80) + (body?.length > 80 ? '...' : '')
+}
+
+function selectEmail(email) {
+  email.isRead = true
+  selectedEmail.value = email
+  checkForClue(email)
+}
+
+function checkForClue(email) {
+  const vaultWord = store.sessionState?.vaultWord2
+  if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
+    store.addClue(
+      'mail-vault-word',
+      'NovaMail',
+      `Suspicious email from ${email.from}: contains the keyword "${vaultWord}".`
+    )
+    store.markRoomComplete('mail')
+  }
+}
+
+function formatDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return d.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' })
+}
+
+function formatDateFull(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleString('en-AU')
+}
+
+function getDefaultEmails() {
+  return [
+    {
+      id: 'msg-001',
+      from: 'ceo@novacorp.com',
+      to: 'analyst@novacorp.com',
+      subject: 'Project Nova — Confidential',
+      date: '2025-03-02T09:00:00',
+      body: 'The board has approved the midnight handover. Do not document this in the usual channels.',
+      isRead: false,
+      folder: 'inbox',
+    },
+    {
+      id: 'msg-002',
+      from: 'unknown@protonmail.com',
+      to: 'analyst@novacorp.com',
+      subject: 'Re: Tonight',
+      date: '2025-03-02T20:11:00',
+      body: 'Everything is ready for midnight. Come alone. The word you need is "midnight". Delete this.',
+      isRead: false,
+      folder: 'inbox',
+    },
+    {
+      id: 'msg-003',
+      from: 'hr@novacorp.com',
+      to: 'all@novacorp.com',
+      subject: 'Reminder: Annual Security Audit',
+      date: '2025-02-28T10:30:00',
+      body: 'All employees must complete the security awareness training by end of month.',
+      isRead: true,
+      folder: 'inbox',
+    },
+  ]
+}
+</script>
+
+<style scoped>
+.mail-view {
+  display: grid;
+  grid-template-columns: 180px 280px 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.mail-sidebar {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.mail-logo {
+  padding: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.folder-list {
+  padding: 8px 0;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: background var(--transition);
+  border-radius: 0;
+}
+
+.folder-item:hover {
+  background: var(--bg-surface);
+}
+
+.folder-item.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.folder-icon {
+  font-size: 14px;
+}
+
+.folder-count {
+  margin-left: auto;
+  font-size: 11px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* Email list */
+.email-list {
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.empty-folder {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.email-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.email-row:hover {
+  background: var(--bg-surface);
+}
+
+.email-row.selected {
+  background: rgba(31, 111, 235, 0.1);
+  border-left: 3px solid var(--accent-blue);
+}
+
+.email-row.unread .email-from,
+.email-row.unread .email-subject {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.email-from {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-subject {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-snippet {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.email-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Viewer */
+.email-viewer {
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.no-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.email-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.email-subject-large {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.email-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.email-body {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+</style>
