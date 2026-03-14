@@ -14,7 +14,9 @@ public class AiService
     public AiService(HttpClient http, IConfiguration config)
     {
         _http = http;
-        _apiKey = config["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI API key not configured.");
+        _apiKey = Environment.GetEnvironmentVariable("API_KEY")
+            ?? config["API_KEY"]
+            ?? throw new InvalidOperationException("API_KEY is not configured.");
     }
 
     private HttpRequestMessage BuildRequest(object body)
