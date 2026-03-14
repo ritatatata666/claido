@@ -4,8 +4,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   envDir: '..',
   plugins: [
-    vue(),
-    nodePolyfills(),
+    vue()
   ],
   server: {
     headers: {
