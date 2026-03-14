@@ -98,12 +98,12 @@ public class AiService
         var culpritId = 1001 + rng.Next(0, 8);
         var seed = rng.Next(10000, 99999);
 
-        var prompt = $"""
+        var prompt = $$"""
 You are generating a mystery game session. Return ONLY valid JSON, no markdown, no explanation.
-Seed: {seed} — use this to ensure a UNIQUE, creative scenario different from any previous run.
+Seed: {{seed}} — use this to ensure a UNIQUE, creative scenario different from any previous run.
 
 Generate a corporate breach mystery with these exact fields:
-{{
+{
   "culpritName": "FirstName LastName",
   "culpritDepartment": "one of: Engineering, Security, Finance, HR, Executive",
   "culpritRole": "job title",
@@ -111,7 +111,7 @@ Generate a corporate breach mystery with these exact fields:
   "incidentTime": "HH:MM between 00:00 and 03:00",
   "incidentDate": "2025-03-03",
   "employees": [
-    {{ "id": 1001, "name": "...", "department": "...", "role": "...", "accessLevel": 3 }},
+    { "id": 1001, "name": "...", "department": "...", "role": "...", "accessLevel": 3 },
     ... 8 employees total with ids 1001–1008, accessLevels 1–5 varied
   ],
   "badgeDiscrepancy": "one sentence describing what the physical badge log shows vs the digital access log",
@@ -119,9 +119,9 @@ Generate a corporate breach mystery with these exact fields:
   "vaultWord2": "single creative lowercase word with theme: location (NOT vault, NOT server — pick something unusual)",
   "vaultWord3": "single creative lowercase word with theme: identity (NOT anonymous — pick something unusual)",
   "vaultWord4": "single creative lowercase word with theme: motive (NOT greed, NOT revenge — pick something unusual)"
-}}
+}
 
-IMPORTANT: The culprit must have employee id {culpritId}. All other employees are innocent.
+IMPORTANT: The culprit must have employee id {{culpritId}}. All other employees are innocent.
 Generate all 8 employees with realistic diverse names and roles. Vault words must all be DIFFERENT from each other.
 """;
 
