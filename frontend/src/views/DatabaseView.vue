@@ -68,6 +68,7 @@
             </table>
           </div>
           <div class="evidence-actions">
+            <span v-if="evidenceStatus" class="evidence-status">{{ evidenceStatus }}</span>
             <button
               class="btn-primary submit-btn"
               @click="submitDatabaseEvidence"
@@ -75,7 +76,6 @@
             >
               Submit as evidence
             </button>
-            <span v-if="evidenceStatus" class="evidence-status">{{ evidenceStatus }}</span>
           </div>
         </div>
       </div>
@@ -233,6 +233,7 @@ function isSuspicious(row) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-bottom: 140px;
 }
 
 .sidebar-header {
@@ -381,7 +382,7 @@ function isSuspicious(row) {
   padding: 10px 14px;
   border-top: 1px solid var(--border-color);
   font-family: var(--font-mono);
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .submit-btn {
@@ -408,6 +409,7 @@ function isSuspicious(row) {
 .evidence-status {
   font-size: 12px;
   color: var(--text-muted);
+  margin-right: auto;
 }
 
 .results-header {
