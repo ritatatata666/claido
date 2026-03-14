@@ -3,7 +3,8 @@
     <div class="scanlines"></div>
 
     <div class="landing-inner">
-      <!-- Top bar -->
+      <div class="landing-scroll">
+        <!-- Top bar -->
       <div class="top-bar">
         <span class="classified-badge">● CLASSIFIED</span>
         <span class="case-file">CASE FILE #NC-2025-0303</span>
@@ -16,7 +17,7 @@
       </div>
 
       <!-- Briefing card styled as classified document -->
-      <div class="briefing-card">
+      <div v-if="selectedMode === 'standard'" class="briefing-card">
         <div class="watermark">TOP SECRET</div>
         <div class="card-inner">
           <div class="card-header">
@@ -37,27 +38,124 @@
               <strong>{{ room.label }}</strong> — {{ room.desc }}
             </li>
           </ul>
-          <div class="declassified-stamp">DECLASSIFIED</div>
+        <div class="declassified-stamp">DECLASSIFIED</div>
         </div>
       </div>
 
-      <!-- Error -->
-      <div v-if="error" class="error-msg">{{ error }}</div>
+      <div class="mode-card">
+        <div class="mode-card__title">Mode Selection</div>
+        <div class="mode-card__toggle">
+          <button
+            class="mode-card__tab mode-card__tab--standard"
+            :class="{ active: selectedMode === 'standard' }"
+            @click="selectedMode = 'standard'"
+            type="button"
+          >
+            Standard Mode
+          </button>
+          <button
+            class="mode-card__tab mode-card__tab--team"
+            :class="{ active: selectedMode === 'team' }"
+            @click="selectedMode = 'team'"
+            type="button"
+          >
+            Team Mode
+          </button>
+        </div>
+        <p class="mode-card__desc" v-if="selectedMode === 'standard'">
+          Standard mode keeps the classic solo investigation. Grab your own workstation, decode the clues, and unlock the vault without worrying about other players.
+        </p>
+        <p class="mode-card__desc" v-else>
+          Team Mode spins up a shared lobby. Create a room, let everyone join via the invite code, and let one villain try to sabotage while investigators work together.
+        </p>
 
-      <!-- CTA button -->
-      <button
-        class="start-btn"
-        :disabled="loading"
-        @click="startGame"
-      >
-        <span v-if="loading">
-          <span class="spinner-dot"></span>
-          Generating case file...
-        </span>
-        <span v-else>BEGIN INVESTIGATION</span>
-      </button>
+          <div v-if="selectedMode === 'team'" class="mode-card__team">
+          <p class="mode-card__subheading">Team Mode requires a shared code</p>
+          <p class="mode-card__team-text">
+            Everyone who opens the link or enters the invite code is placed on a random faction—one scheming villain and a squad of investigators. Use the console inside the hub to see everyone in the session and how the sabotage tokens are spent.
+          </p>
+        </div>
+      </div>
+
+      <div v-if="selectedMode === 'team'" class="team-lobby-grid">
+        <section class="team-lobby-card team-lobby-card--create">
+          <div class="team-lobby-card__inner">
+            <p class="team-lobby-card__eyebrow">Team mode — Lobby ready</p>
+            <h3 class="team-lobby-card__title">Spin up a Kahoot-style room</h3>
+            <p class="team-lobby-card__body">
+              Tap “Create Team Room” to mint a short invite code. Share the code, let everyone join from their own device, and the roles lock in automatically—one villain, the rest investigators.
+            </p>
+            <ul class="team-lobby-card__list">
+              <li>Host creates the room and keeps this panel open for quick sharing.</li>
+              <li>Team members paste the code on the right, pick an alias, and instantly show up in the roster.</li>
+              <li>Tokens and clues stay synced across machines so sabotage feels tense.</li>
+            </ul>
+            <div class="team-lobby-card__actions">
+              <button
+                class="team-lobby-card__button"
+                :disabled="loading"
+                @click="createTeamRoom"
+              >
+                <span v-if="loading">
+                  <span class="spinner-dot"></span>
+                  Creating team room...
+                </span>
+                <span v-else>CREATE TEAM ROOM</span>
+              </button>
+              <p class="team-lobby-card__hint">Need a room? This button generates the code, registers the host, and keeps the door open for teammates.</p>
+              <p v-if="error" class="team-lobby-card__error">{{ error }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="join-card">
+          <div class="join-card__row">
+            <label class="join-card__label">Join code</label>
+            <input
+              v-model="joinCodeInput"
+              class="join-card__input"
+              type="text"
+              placeholder="Enter code (e.g. NOVA12)"
+            />
+          </div>
+          <div class="join-card__row">
+            <label class="join-card__label">Nickname (optional)</label>
+            <input
+              v-model="joinName"
+              class="join-card__input"
+              type="text"
+              placeholder="Agent alias"
+            />
+          </div>
+          <button
+            class="join-card__button"
+            :disabled="joinLoading || !joinCodeInput.trim()"
+            @click="joinExistingSession"
+          >
+            <span v-if="joinLoading">Joining…</span>
+            <span v-else>Join existing session</span>
+          </button>
+          <p v-if="joinError" class="join-card__error">{{ joinError }}</p>
+        </section>
+      </div>
+
+      <div v-if="selectedMode === 'standard'" class="cta-section">
+        <div v-if="error" class="error-msg">{{ error }}</div>
+        <button
+          class="start-btn"
+          :disabled="loading"
+          @click="startSoloSession"
+        >
+          <span v-if="loading">
+            <span class="spinner-dot"></span>
+            Generating case file...
+          </span>
+          <span v-else>BEGIN SOLO INVESTIGATION</span>
+        </button>
+      </div>
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+      </div>
     </div>
   </div>
 </template>
@@ -71,6 +169,11 @@ const router = useRouter()
 const store = useGameStore()
 const loading = ref(false)
 const error = ref('')
+const joinCodeInput = ref('')
+const joinName = ref('')
+const joinLoading = ref(false)
+const joinError = ref('')
+const selectedMode = ref('standard')
 
 const rooms = [
   { id: 'shell', label: 'NovaShell', desc: 'Explore the internal filesystem' },
@@ -82,14 +185,48 @@ const rooms = [
   { id: 'vault', label: 'Vault', desc: 'Enter the four-word passphrase to win' },
 ]
 
-async function startGame() {
+async function startSoloSession() {
   loading.value = true
   error.value = ''
   try {
+    store.configureTeamMode('standard')
     await store.createSession()
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function joinExistingSession() {
+  if (!joinCodeInput.value.trim()) {
+    joinError.value = 'Enter a join code first.'
+    return
+  }
+  joinLoading.value = true
+  joinError.value = ''
+  try {
+    store.configureTeamMode('team')
+    await store.joinTeamSession(joinCodeInput.value.trim(), joinName.value.trim() || 'Investigator')
+    router.push('/hub')
+  } catch (e) {
+    joinError.value = e.message || 'Could not join that session.'
+  } finally {
+    joinLoading.value = false
+  }
+}
+
+async function createTeamRoom() {
+  loading.value = true
+  error.value = ''
+  joinError.value = ''
+  try {
+    store.configureTeamMode('team')
+    await store.createTeamRoom('Host Investigator')
+    router.push('/hub')
+  } catch (e) {
+    error.value = e.message || 'Failed to create a team room. Is the backend running?'
   } finally {
     loading.value = false
   }
@@ -100,12 +237,14 @@ async function startGame() {
 /* ── Base ─────────────────────────────────────────────── */
 .landing {
   min-height: 100vh;
+  max-height: 100vh;
   background: #0a0a0a;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding: 40px 24px 60px;
-  overflow-y: auto;
+  overflow-y: overlay;
+  scrollbar-gutter: stable;
   position: relative;
   font-family: 'Courier New', Courier, monospace;
 }
@@ -134,6 +273,22 @@ async function startGame() {
   flex-direction: column;
   align-items: center;
   gap: 28px;
+  max-height: calc(100vh - 48px);
+}
+
+.landing-scroll {
+  width: 100%;
+  overflow-y: auto;
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  box-sizing: border-box;
+  scrollbar-gutter: stable;
+}
+
+.landing-scroll > * {
+  flex: 0 0 auto;
 }
 
 /* ── Top bar ──────────────────────────────────────────── */
@@ -437,6 +592,283 @@ async function startGame() {
   font-size: 11px;
   text-align: center;
   letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.mode-card {
+  width: 100%;
+  background: rgba(6, 6, 6, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+}
+
+.mode-card__title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #9999a3;
+}
+
+.mode-card__toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.mode-card__tab {
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(8, 10, 20, 0.95);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.08);
+}
+
+.mode-card__tab--standard {
+  background: linear-gradient(135deg, rgba(24, 10, 37, 0.9), rgba(39, 18, 64, 0.9));
+}
+
+.mode-card__tab--team {
+  background: linear-gradient(135deg, rgba(7, 8, 24, 0.95), rgba(101, 24, 120, 0.9));
+}
+
+.mode-card__tab:not(.active) {
+  opacity: 0.75;
+}
+
+.mode-card__tab.active {
+  border-color: #c48bff;
+  box-shadow: 0 12px 28px rgba(196, 139, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+.mode-card__desc {
+  margin: 0;
+  font-size: 13px;
+  color: #c3c3cd;
+}
+
+.mode-card__team {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mode-card__subheading {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8b8b99;
+}
+
+.mode-card__team-option {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  color: #f5f5f7;
+  font-size: 13px;
+}
+
+.mode-card__team-option input {
+  margin: 0;
+}
+
+.mode-card__team-option strong {
+  font-size: 14px;
+}
+
+.mode-card__team-option span {
+  display: block;
+  font-size: 12px;
+  color: #aaaab5;
+}
+
+.mode-card__team-text {
+  margin: 0;
+  font-size: 13px;
+  color: #c0c0c9;
+  line-height: 1.4;
+}
+
+.team-lobby-grid {
+  width: 100%;
+  display: grid;
+  gap: 18px;
+}
+
+@media (min-width: 780px) {
+  .team-lobby-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: stretch;
+  }
+}
+
+.team-lobby-card {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(14, 15, 30, 0.95), rgba(48, 22, 63, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px rgba(0, 0, 0, 0.6);
+  min-height: 280px;
+}
+
+.team-lobby-card__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-lobby-card__actions {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-lobby-card__button {
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #8c3bff, #d22766);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 1px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.team-lobby-card__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.team-lobby-card__button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(210, 39, 102, 0.4);
+}
+
+.team-lobby-card__hint {
+  font-size: 12px;
+  color: #b4b1c7;
+}
+
+.team-lobby-card__error {
+  font-size: 12px;
+  color: #ff8b8b;
+}
+
+.team-lobby-card__eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(208, 183, 255, 0.9);
+}
+
+.team-lobby-card__title {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: #f5f5ff;
+}
+
+.team-lobby-card__body {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(220, 220, 255, 0.9);
+  line-height: 1.5;
+}
+
+.team-lobby-card__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(195, 195, 255, 0.9);
+}
+
+.team-lobby-card__list li {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.join-card {
+  width: 100%;
+  background: rgba(4, 4, 6, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+}
+
+.join-card__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.join-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8d8d95;
+}
+
+.join-card__input {
+  background: #0b0b11;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 13px;
+}
+
+.join-card__button {
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #ff6b80, #ffb347);
+  color: #0b0b0f;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.join-card__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.join-card__error {
+  color: #ff7b7b;
+  font-size: 12px;
   margin: 0;
 }
 </style>

@@ -27,6 +27,8 @@
       </div>
     </header>
 
+    <TeamModePanel />
+
     <!-- Room grid -->
     <main class="hub-main">
       <div class="section-label">SELECT INVESTIGATION ROOM</div>
@@ -83,6 +85,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
+import TeamModePanel from '../components/TeamModePanel.vue'
 
 const router = useRouter()
 const store = useGameStore()
@@ -165,11 +168,20 @@ const progressPercent = computed(() => Math.round((clearedCount.value / 6) * 100
 // Timer
 const elapsed = ref(0)
 let timerInterval = null
+let teamRefreshInterval = null
 
 onMounted(() => {
   if (!store.sessionId) {
     router.replace('/')
     return
+  }
+  if (store.teamMode === 'team') {
+    store.refreshTeamState().catch(() => {})
+    teamRefreshInterval = setInterval(() => {
+      if (store.teamMode === 'team') {
+        store.refreshTeamState().catch(() => {})
+      }
+    }, 5000)
   }
   timerInterval = setInterval(() => {
     if (store.gameStartTime) {
@@ -178,7 +190,10 @@ onMounted(() => {
   }, 1000)
 })
 
-onUnmounted(() => clearInterval(timerInterval))
+onUnmounted(() => {
+  clearInterval(timerInterval)
+  clearInterval(teamRefreshInterval)
+})
 
 const formattedTime = computed(() => {
   const s = elapsed.value

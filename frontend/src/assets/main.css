@@ -34,7 +34,7 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
-  overflow: hidden;
+  overflow: auto;
 }
 
 a {
