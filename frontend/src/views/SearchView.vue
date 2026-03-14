@@ -726,25 +726,6 @@ const filteredLogs = computed(() => {
     }
   }
 
-  // Histogram hour
-  if (activeHistogramHour.value !== null) {
-    result = result.filter(l => getHour(l) === activeHistogramHour.value)
-  }
-
-  // KQL + MiniSearch
-  const query = freeText.value.trim()
-  if (query && miniSearch) {
-    const { fieldClauses, freeText: searchText } = parseKQL(query)
-    result = applyFieldClauses(result, fieldClauses)
-    if (searchText) {
-      const hits = miniSearch.search(searchText)
-      const hitIds = new Set(hits.map(h => h.id))
-      result = result.filter(l => hitIds.has(l.id))
-      const scoreMap = new Map(hits.map(h => [h.id, h.score]))
-      result.sort((a, b) => (scoreMap.get(b.id) || 0) - (scoreMap.get(a.id) || 0))
-    }
-  }
-
   return result
 })
 
