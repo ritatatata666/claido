@@ -21,6 +21,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+var apiKey = Environment.GetEnvironmentVariable("API_KEY") ?? builder.Configuration["API_KEY"];
+if (string.IsNullOrWhiteSpace(apiKey))
+{
+    app.Logger.LogError("API_KEY is missing. Set API_KEY as an environment variable or in a .env file before calling AI-backed endpoints.");
+}
+else
+{
+    app.Logger.LogInformation("API_KEY is configured.");
+}
+
 app.UseCors();
 app.MapControllers();
 app.Run();
