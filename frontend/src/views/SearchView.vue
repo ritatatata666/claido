@@ -838,14 +838,15 @@ function ensureWhistleblowerClue(entries, vaultWord4, whistleblowerUserId) {
   if (whistleIndex >= 0) {
     const current = entries[whistleIndex]
     console.warn('[NovaSearch] Injected fallback clue word into whistleblower log to keep puzzle solvable.')
-    entries[whistleIndex] = {
+    const updated = [...entries]
+    updated[whistleIndex] = {
       ...current,
       user: whistleblowerUserId,
       level: 'ERROR',
       message: `${String(current.message || '').trim()} Keyword: ${vaultWord4}`.trim(),
       service: normalizeService(current.service || 'vault'),
     }
-    return entries
+    return updated
   }
 
   const clueLog = {
@@ -859,8 +860,7 @@ function ensureWhistleblowerClue(entries, vaultWord4, whistleblowerUserId) {
   }
   console.warn('[NovaSearch] Added fallback whistleblower log to keep puzzle solvable.')
   const insertAt = Math.min(35, entries.length)
-  entries.splice(insertAt, 0, clueLog)
-  return entries
+  return [...entries.slice(0, insertAt), clueLog, ...entries.slice(insertAt)]
 }
 
 function getDefaultLogs(vaultWord4, whistleblowerUserId) {

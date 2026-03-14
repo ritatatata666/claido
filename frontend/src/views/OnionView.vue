@@ -133,13 +133,14 @@ function normalizeOnionContent(data, culpritDepartment) {
   if (hasDeptListing) return { forumPosts, marketListings }
 
   if (marketListings.length > 0) {
-    marketListings[0] = {
-      ...marketListings[0],
-      title: `${marketListings[0].title || 'Stolen credentials'} — ${culpritDepartment} access`,
-      description: `${marketListings[0].description || ''} Linked to NovaCorp ${deptNeedle} department credentials.`.trim(),
+    const updatedListings = [...marketListings]
+    updatedListings[0] = {
+      ...updatedListings[0],
+      title: `${updatedListings[0].title || 'Stolen credentials'} — ${culpritDepartment} access`,
+      description: `${updatedListings[0].description || ''} Linked to NovaCorp ${deptNeedle} department credentials.`.trim(),
     }
     console.warn('[Onion] Injected culprit department into listing data to keep puzzle solvable.')
-    return { forumPosts, marketListings }
+    return { forumPosts, marketListings: updatedListings }
   }
 
   console.warn('[Onion] Onion room data missing listings; using default content with fallback department clue.')
