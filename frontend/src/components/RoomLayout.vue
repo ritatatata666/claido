@@ -611,10 +611,6 @@ const formattedTime = computed(() => {
 }
 
 /*Progress Bar*/
-.clue-text--masked {
-  color: #9ea0b5;
-  font-style: italic;
-}
 
 .progress-bar {
   display: flex;
