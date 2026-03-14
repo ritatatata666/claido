@@ -91,14 +91,12 @@ const loading = ref(true)
 const selectedEmail = ref(null)
 const activeFolder = ref('inbox')
 const evidenceResult = ref(null)
-const activeVaultWord2 = ref('')
 
 const folders = ['inbox', 'sent', 'flagged']
 const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
 
 onMounted(async () => {
   const vaultWord2 = resolveVaultWord2()
-  activeVaultWord2.value = vaultWord2
   try {
     const data = await store.enterRoom('mail')
     const raw = Array.isArray(data) ? data : []
@@ -164,7 +162,7 @@ function toggleFlag(email) {
 }
 
 function submitEvidence(email) {
-  const vaultWord = activeVaultWord2.value
+  const vaultWord = resolveVaultWord2()
   if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
     evidenceResult.value = 'correct'
     store.addClue(
