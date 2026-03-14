@@ -51,13 +51,21 @@ body {
 .blood-splatter-global {
   position: fixed;
   pointer-events: none;
-  z-index: 2;
-  opacity: 0.8;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 /* On hub page: splatters on top, not scrollable */
 .is-hub .blood-splatter-global {
   z-index: 9999;
+  opacity: 0.8;
+}
+
+/* On landing page: visible and fixed in place */
+.is-landing .blood-splatter-global {
+  z-index: 2;
+  opacity: 0.6;
 }
 
 .blood-splatter-global img {
@@ -235,4 +243,30 @@ input:focus, textarea:focus, select:focus {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+/* Nova Glitch Effect — pulse-glow */
+.nova-glitch {
+  position: relative;
+  display: inline-block;
+  color: #00ff41;
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 4px rgba(0, 255, 65, 0.6),
+      0 0 8px rgba(0, 255, 65, 0.4),
+      0 0 16px rgba(0, 255, 65, 0.2);
+    opacity: 1;
+  }
+  50% {
+    text-shadow:
+      0 0 8px rgba(0, 255, 65, 1),
+      0 0 20px rgba(0, 255, 65, 0.8),
+      0 0 40px rgba(0, 255, 65, 0.5),
+      0 0 60px rgba(0, 255, 65, 0.3);
+    opacity: 0.92;
+  }
 }

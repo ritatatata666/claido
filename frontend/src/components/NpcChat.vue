@@ -124,13 +124,13 @@ async function send() {
   font-family: var(--font-mono);
   transition: border-color var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
   box-shadow: var(--paper-shadow);
-  transform: rotate(-1deg);
+  transform: none;
 }
 
 .npc-toggle:hover {
   border-color: rgba(185, 70, 54, 0.4);
   color: var(--text-primary);
-  transform: rotate(0deg) translateY(-1px);
+  transform: translateY(-1px);
 }
 
 .npc-avatar { font-size: 14px; }

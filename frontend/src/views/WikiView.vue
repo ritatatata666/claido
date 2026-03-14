@@ -3,7 +3,7 @@
     <div class="wiki-view">
       <!-- Sidebar nav -->
       <aside class="wiki-nav">
-        <div class="nav-header">NovaWiki</div>
+        <div class="nav-header nova-glitch" data-text="NOVAWIKI">NOVAWIKI</div>
         <div class="nav-search">
           <input v-model="searchTerm" placeholder="Search pages..." />
         </div>
@@ -34,13 +34,13 @@
         <div v-else class="wiki-page">
           <div class="page-header">
             <div class="page-breadcrumb">
-              <span>NovaWiki</span>
+              <span class="nova-glitch" data-text="NovaWiki">NovaWiki</span>
               <span class="crumb-sep">›</span>
               <span>{{ selectedPage.category }}</span>
               <span class="crumb-sep">›</span>
               <span class="crumb-active">{{ selectedPage.title }}</span>
             </div>
-            <h1 class="page-title">{{ selectedPage.title }}</h1>
+            <h1 class="page-title" :class="{ 'nova-glitch': selectedPage.title.toLowerCase().includes('nova') }" :data-text="selectedPage.title">{{ selectedPage.title }}</h1>
             <div class="page-meta">
               <span>Last modified: {{ selectedPage.lastModified }}</span>
               <span>Author: {{ selectedPage.author }}</span>
@@ -244,6 +244,13 @@ function getDefaultPages(vaultWord3) {
   color: var(--text-primary);
   position: relative;
   font-family: 'Courier New', Courier, monospace;
+  
+  /* Dark theme color overrides for better contrast */
+  --text-primary: #e8e8e8;
+  --text-secondary: #b8b8b8;
+  --text-muted: #888888;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --bg-surface: rgba(255, 255, 255, 0.05);
 }
 
 .wiki-view::before {
@@ -273,12 +280,12 @@ function getDefaultPages(vaultWord3) {
   padding: 16px;
   font-size: 16px;
   font-weight: 700;
-  color: #00ff41;
   border-bottom: 1px solid var(--border-color);
-  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
+
+
 
 .nav-search {
   padding: 12px;
@@ -385,7 +392,7 @@ function getDefaultPages(vaultWord3) {
 .page-title {
   font-size: 28px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   margin-bottom: 12px;
   line-height: 1.3;
 }
@@ -398,6 +405,12 @@ function getDefaultPages(vaultWord3) {
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 16px;
   margin-bottom: 24px;
+}
+
+.page-content {
+  color: var(--text-primary);
+  line-height: 1.6;
+  font-size: 14px;
 }
 
 .page-content :deep(h2) {
@@ -416,6 +429,16 @@ function getDefaultPages(vaultWord3) {
 
 .page-content :deep(strong) {
   font-weight: 700;
+  color: var(--text-primary);
+}
+
+.page-content :deep(em) {
+  color: var(--text-secondary);
+}
+
+.page-content :deep(p) {
+  color: var(--text-primary);
+  margin-bottom: 12px;
 }
 
 .redacted-section {

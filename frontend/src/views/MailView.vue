@@ -3,7 +3,7 @@
     <div class="mail-view">
       <!-- Sidebar -->
       <div class="mail-sidebar">
-        <div class="mail-logo">NovaMail</div>
+        <div class="mail-logo nova-glitch" data-text="NOVAMAIL">NOVAMAIL</div>
         <div class="folder-list">
           <div
             v-for="folder in folders"

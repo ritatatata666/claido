@@ -1,5 +1,5 @@
 <template>
-  <div class="app-shell" :class="{ 'is-hub': isHub }">
+  <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding }">
     <!-- Blood Splatter Effects -->
     <div class="blood-splatter-global blood-splatter-global--1" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
     <div class="blood-splatter-global blood-splatter-global--2" aria-hidden="true"><img :src="bloodSplatter2" alt="" /></div>
@@ -32,6 +32,7 @@ import bloodSplatter2 from '../images/bloodSplatter2.png'
 
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
+const isLanding = computed(() => route.path === '/')
 </script>
 
 <style scoped>
