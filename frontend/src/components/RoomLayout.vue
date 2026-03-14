@@ -5,7 +5,7 @@
       <div class="topbar-left">
         <!-- CLAIDO logo menu -->
         <div class="logo-wrap" @click.stop="menuOpen = !menuOpen">
-          <span class="logo">🔐 CLAIDO</span>
+          <span class="logo">🔐 CLAIDO CASEBOARD</span>
           <span class="logo-arrow">{{ menuOpen ? '▲' : '▼' }}</span>
         </div>
         <Transition name="dropdown">
@@ -25,12 +25,18 @@
       </div>
 
       <div class="topbar-center">
-        <span class="room-name">{{ roomLabel }}</span>
+        <div class="room-heading">
+          <span class="room-tag flicker-slow">Investigation Node</span>
+          <span class="room-name flicker-text">{{ roomLabel }}</span>
+        </div>
         <button class="help-btn" :title="'How to solve ' + roomLabel" @click.stop="helpOpen = !helpOpen">?</button>
       </div>
 
       <div class="topbar-right">
-        <span class="timer">{{ formattedTime }}</span>
+        <div class="timer-card">
+          <span class="timer-label">Elapsed</span>
+          <span class="timer">{{ formattedTime }}</span>
+        </div>
       </div>
     </header>
 
@@ -46,7 +52,7 @@
           {{ sidebarCollapsed ? '◀' : '▶' }}
         </button>
         <div v-if="!sidebarCollapsed" class="sidebar-content">
-          <h3 class="sidebar-title">Evidence</h3>
+          <h3 class="sidebar-title">Evidence Board</h3>
           <div v-if="store.discoveredClues.length === 0" class="no-clues">
             No clues found yet.
           </div>
@@ -56,7 +62,15 @@
             class="clue-item"
           >
             <span class="clue-room">{{ clue.room }}</span>
-            <p class="clue-text">{{ clue.text }}</p>
+            <p
+              class="clue-text"
+              :class="{ 'clue-text--masked': clue.locked && isMaskedView }"
+            >
+              <span v-if="clue.locked && isMaskedView">
+                Clue hidden by the saboteur — use the Team Mode console to expose it.
+              </span>
+              <span v-else>{{ clue.text }}</span>
+            </p>
           </div>
         </div>
       </aside>
@@ -136,6 +150,7 @@ const sidebarCollapsed = ref(false)
 const menuOpen = ref(false)
 const goalsOpen = ref(false)
 const helpOpen = ref(false)
+const isMaskedView = computed(() => store.teamMode === 'team' && store.teamRole === 'good')
 
 const rooms = [
   { id: 'shell', label: 'NovaShell' },
@@ -264,21 +279,56 @@ const formattedTime = computed(() => {
 <style scoped>
 .room-layout {
   display: grid;
-  grid-template-rows: 48px 1fr 36px;
+  grid-template-rows: 72px 1fr 58px;
   height: 100vh;
-  background: var(--bg-primary);
+  background: transparent;
   overflow: hidden;
+  position: relative;
+}
+
+.room-layout::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(255, 247, 227, 0.2), transparent 20%),
+    radial-gradient(circle at 88% 16%, rgba(255, 247, 227, 0.14), transparent 16%),
+    linear-gradient(180deg, rgba(160, 113, 73, 0.12), rgba(130, 87, 50, 0.08));
+  pointer-events: none;
+  z-index: 0;
 }
 
 .topbar {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 0 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 14px 20px 0;
   z-index: 100;
   position: relative;
+}
+
+.topbar::before {
+  content: '';
+  position: absolute;
+  inset: 10px 18px 0;
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.96), rgba(237, 224, 202, 0.96));
+  border: 1px solid rgba(88, 63, 41, 0.2);
+  border-radius: 14px 14px 6px 6px;
+  box-shadow: var(--paper-shadow);
+  z-index: -1;
+}
+
+.topbar::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 36px;
+  width: 92px;
+  height: 24px;
+  background: rgba(240, 220, 184, 0.75);
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  box-shadow: 0 3px 6px rgba(90, 60, 35, 0.08);
 }
 
 .topbar-left {
@@ -305,18 +355,21 @@ const formattedTime = computed(() => {
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  transition: background var(--transition);
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background var(--transition), transform var(--transition);
   user-select: none;
 }
 
-.logo-wrap:hover { background: var(--bg-surface); }
+.logo-wrap:hover {
+  background: rgba(255, 248, 236, 0.55);
+  transform: translateY(-1px);
+}
 
 .logo {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1.6px;
   color: var(--text-primary);
   font-family: var(--font-mono);
 }
@@ -333,10 +386,10 @@ const formattedTime = computed(() => {
   top: calc(100% + 6px);
   left: 0;
   min-width: 200px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(240, 228, 208, 0.98));
+  border: 1px solid rgba(88, 63, 41, 0.22);
+  border-radius: 10px;
+  box-shadow: var(--paper-shadow);
   z-index: 200;
   overflow: hidden;
 }
@@ -354,7 +407,7 @@ const formattedTime = computed(() => {
 }
 
 .menu-item:hover {
-  background: var(--bg-primary);
+  background: rgba(189, 149, 109, 0.12);
   color: var(--text-primary);
 }
 
@@ -367,21 +420,36 @@ const formattedTime = computed(() => {
 }
 
 /* Room name + help button */
-.room-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+.room-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.room-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+}
+
+.room-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .help-btn {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: transparent;
-  border: 1px solid var(--text-muted);
-  color: var(--text-muted);
+  background: rgba(255, 247, 233, 0.9);
+  border: 1px solid rgba(88, 63, 41, 0.26);
+  color: var(--accent-red);
   font-size: 11px;
   font-weight: 700;
   padding: 0;
@@ -392,42 +460,70 @@ const formattedTime = computed(() => {
 }
 
 .help-btn:hover {
-  border-color: var(--accent-purple);
-  color: var(--accent-purple);
+  border-color: rgba(185, 70, 54, 0.45);
+  color: var(--accent-red);
   opacity: 1;
+}
+
+.timer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 248, 236, 0.62);
+}
+
+.timer-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
 .timer {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--accent-orange);
+  letter-spacing: 1px;
 }
 
 .room-body {
   display: flex;
   overflow: hidden;
   min-height: 0;
+  gap: 18px;
+  padding: 18px 22px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .room-main {
   flex: 1;
   overflow: hidden;
   min-width: 0;
+  background: rgba(104, 72, 44, 0.1);
+  border-radius: 24px 24px 12px 12px;
+  padding: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 18px 32px rgba(82, 52, 27, 0.12);
 }
 
-/* Sidebar */
 .clue-sidebar {
-  width: 220px;
-  background: var(--bg-secondary);
-  border-left: 1px solid var(--border-color);
+  width: 260px;
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.96), rgba(235, 222, 202, 0.96));
+  border: 1px solid rgba(88, 63, 41, 0.2);
+  border-radius: 12px 12px 0 0;
   display: flex;
   flex-direction: column;
   position: relative;
   transition: width var(--transition);
+  box-shadow: var(--paper-shadow);
+  overflow: hidden;
 }
 
 .clue-sidebar.collapsed {
   width: 24px;
+  border-radius: 14px;
 }
 
 .sidebar-toggle {
@@ -437,8 +533,8 @@ const formattedTime = computed(() => {
   transform: translateY(-50%);
   width: 24px;
   height: 24px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 248, 236, 0.96);
+  border: 1px solid rgba(88, 63, 41, 0.22);
   border-radius: 50%;
   color: var(--text-secondary);
   font-size: 10px;
@@ -451,7 +547,7 @@ const formattedTime = computed(() => {
 }
 
 .sidebar-content {
-  padding: 12px;
+  padding: 18px 14px 14px;
   overflow-y: auto;
   flex: 1;
 }
@@ -460,9 +556,9 @@ const formattedTime = computed(() => {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
+  letter-spacing: 2px;
+  color: var(--accent-red);
+  margin-bottom: 16px;
 }
 
 .no-clues {
@@ -472,11 +568,25 @@ const formattedTime = computed(() => {
 }
 
 .clue-item {
-  margin-bottom: 12px;
-  padding: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  margin-bottom: 14px;
+  padding: 12px 10px 10px;
+  background: rgba(255, 250, 242, 0.82);
+  border: 1px solid rgba(88, 63, 41, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 10px 18px rgba(82, 52, 27, 0.08);
+  position: relative;
+}
+
+.clue-item::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #4d78a5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24), inset 0 1px 1px rgba(255, 255, 255, 0.65);
 }
 
 .clue-room {
@@ -484,8 +594,8 @@ const formattedTime = computed(() => {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--accent-purple);
-  letter-spacing: 0.5px;
+  color: var(--accent-red);
+  letter-spacing: 1.2px;
   margin-bottom: 4px;
 }
 
@@ -495,15 +605,26 @@ const formattedTime = computed(() => {
   line-height: 1.4;
 }
 
-/* Progress bar */
+.clue-text--masked {
+  color: #9ea0b5;
+  font-style: italic;
+}
+
+/*Progress Bar*/
+
 .progress-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 24px;
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  padding: 0 16px;
+  margin: 0 22px 18px;
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.94), rgba(236, 223, 202, 0.94));
+  border: 1px solid rgba(88, 63, 41, 0.2);
+  border-radius: 0 0 14px 14px;
+  padding: 12px 16px;
+  box-shadow: var(--paper-shadow);
+  position: relative;
+  z-index: 1;
 }
 
 .progress-dot {
@@ -516,17 +637,17 @@ const formattedTime = computed(() => {
 
 .progress-dot::before {
   content: '';
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: rgba(120, 88, 60, 0.45);
   display: block;
   transition: background var(--transition);
 }
 
 .progress-dot.active::before {
-  background: var(--accent-blue);
-  box-shadow: 0 0 6px var(--accent-blue);
+  background: var(--accent-red);
+  box-shadow: 0 0 0 3px rgba(185, 70, 54, 0.12);
 }
 
 .progress-dot.done::before {
@@ -534,11 +655,11 @@ const formattedTime = computed(() => {
 }
 
 .dot-label {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 2px;
+  letter-spacing: 1px;
+  margin-top: 4px;
 }
 
 .progress-dot.active .dot-label {
@@ -549,7 +670,6 @@ const formattedTime = computed(() => {
   color: var(--accent-green);
 }
 
-/* Modals */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -562,12 +682,12 @@ const formattedTime = computed(() => {
 }
 
 .modal {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(255, 251, 244, 0.98), rgba(237, 224, 203, 0.98));
+  border: 1px solid rgba(88, 63, 41, 0.22);
+  border-radius: 12px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 24px 48px rgba(46, 28, 14, 0.24);
   overflow: hidden;
 }
 
@@ -576,8 +696,8 @@ const formattedTime = computed(() => {
   justify-content: space-between;
   align-items: center;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-surface);
+  border-bottom: 1px solid rgba(88, 63, 41, 0.14);
+  background: rgba(255, 247, 233, 0.7);
 }
 
 .modal-title {
@@ -585,7 +705,7 @@ const formattedTime = computed(() => {
   font-weight: 700;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
 .modal-close {
@@ -635,9 +755,9 @@ const formattedTime = computed(() => {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: var(--bg-surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 248, 236, 0.72);
+  border-radius: 8px;
+  border: 1px solid rgba(88, 63, 41, 0.14);
 }
 
 .prog-label {

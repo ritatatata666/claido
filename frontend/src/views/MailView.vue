@@ -3,7 +3,7 @@
     <div class="mail-view">
       <!-- Sidebar -->
       <div class="mail-sidebar">
-        <div class="mail-logo">NovaMail</div>
+        <div class="mail-logo nova-glitch" data-text="NOVAMAIL">NOVAMAIL</div>
         <div class="folder-list">
           <div
             v-for="folder in folders"
@@ -91,14 +91,12 @@ const loading = ref(true)
 const selectedEmail = ref(null)
 const activeFolder = ref('inbox')
 const evidenceResult = ref(null)
-const activeVaultWord2 = ref('')
 
 const folders = ['inbox', 'sent', 'flagged']
 const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
 
 onMounted(async () => {
   const vaultWord2 = resolveVaultWord2()
-  activeVaultWord2.value = vaultWord2
   try {
     const data = await store.enterRoom('mail')
     const raw = Array.isArray(data) ? data : []
@@ -120,7 +118,8 @@ function resolveVaultWord2() {
 
 function normalizeEmails(rawEmails, vaultWord2) {
   const normalized = rawEmails.map(e => ({ ...e, isFlagged: false }))
-  const hasClue = normalized.some(e => String(e.body || '').toLowerCase().includes(vaultWord2))
+  const lowerVault = vaultWord2.toLowerCase()
+  const hasClue = normalized.some(e => String(e.body || '').toLowerCase().includes(lowerVault))
   if (hasClue) return normalized
 
   if (normalized.length > 0) {
@@ -163,7 +162,7 @@ function toggleFlag(email) {
 }
 
 function submitEvidence(email) {
-  const vaultWord = activeVaultWord2.value
+  const vaultWord = resolveVaultWord2()
   if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
     evidenceResult.value = 'correct'
     store.addClue(

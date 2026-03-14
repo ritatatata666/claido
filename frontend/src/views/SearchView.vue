@@ -4,7 +4,7 @@
       <!-- Left sidebar -->
       <aside class="search-sidebar">
         <div class="sidebar-logo">
-          <span class="logo-diamond">◆</span> Discover
+          <span class="logo-diamond">◆</span> <span class="nova-glitch" data-text="NOVASEARCH">NOVASEARCH</span>
         </div>
 
         <!-- Selected Fields -->

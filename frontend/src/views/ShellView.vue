@@ -27,6 +27,8 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
+const commandHistory = ref([])
+let historyIndex = 0
 const activeVaultWord1 = ref('')
 const activeCulpritId = ref(1001)
 
@@ -85,9 +87,9 @@ onMounted(async () => {
   prompt()
 
   term.onKey(({ key, domEvent }) => {
-    const code = domEvent.keyCode
-
-    if (code === 13) {
+    domEvent.preventDefault()
+    const domKey = domEvent.key
+    if (domEvent.keyCode === 13) {
       // Enter
       const cmd = inputBuffer.trim()
       writelnTerminal('')
@@ -99,27 +101,37 @@ onMounted(async () => {
       handleCommand(cmd)
       inputBuffer = ''
       prompt()
-    } else if (code === 8) {
+      return
+    }
+
+    if (domEvent.keyCode === 8) {
       // Backspace
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         writeTerminal('\b \b')
       }
-    } else if (code === 67 && domEvent.ctrlKey) {
+      return
+    }
+
+    if (domEvent.ctrlKey && domKey.toLowerCase() === 'c') {
       // Ctrl+C
       writelnTerminal('^C')
       inputBuffer = ''
       prompt()
-    } else if (data === '\x1b[A') {
-      // Up arrow — previous command
+      return
+    }
+
+    if (domKey === 'ArrowUp') {
       if (commandHistory.value.length === 0) return
       if (historyIndex > 0) historyIndex--
       const prev = commandHistory.value[historyIndex] ?? ''
       clearCurrentInput()
       inputBuffer = prev
       writeTerminal(prev)
-    } else if (data === '\x1b[B') {
-      // Down arrow — next command
+      return
+    }
+
+    if (domKey === 'ArrowDown') {
       if (historyIndex < commandHistory.value.length - 1) {
         historyIndex++
         const next = commandHistory.value[historyIndex] ?? ''
@@ -131,12 +143,17 @@ onMounted(async () => {
         clearCurrentInput()
         inputBuffer = ''
       }
-    } else if (data === '\x1b[C' || data === '\x1b[D') {
-      // Left/right arrows — ignore to prevent cursor corruption
-    } else if (data >= ' ' || data === '\t') {
+      return
+    }
+
+    if (domKey === 'ArrowLeft' || domKey === 'ArrowRight') {
+      return
+    }
+
+    if ((domKey && domKey.length === 1) || domKey === '\t') {
       // Printable chars — also handles paste (multi-char data)
-      inputBuffer += data
-      writeTerminal(data)
+      inputBuffer += key
+      writeTerminal(key)
       historyIndex = commandHistory.value.length
     }
   })

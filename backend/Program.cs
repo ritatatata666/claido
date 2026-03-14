@@ -1,13 +1,20 @@
 using System.Collections.Concurrent;
 using Claido.Models;
 using Claido.Services;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.LoadApiKey();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+});
 builder.Services.AddHttpClient<AiService>();
 builder.Services.AddSingleton<ConcurrentDictionary<Guid, SessionState>>();
+builder.Services.AddSingleton<ConcurrentDictionary<string, Guid>>();
+builder.Services.AddSingleton<SessionCreator>();
 
 builder.Services.AddCors(options =>
 {
