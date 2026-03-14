@@ -54,7 +54,8 @@ public class SessionController : ControllerBase
             return Ok(new
             {
                 sessionId = session.SessionId,
-                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                employees = session.Employees,
+                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                
+                employees = session.Employees,
                 incidentTimestamp = session.IncidentTimestamp,
                 badgeDiscrepancy = session.BadgeDiscrepancy,
                 motive = session.Motive,
