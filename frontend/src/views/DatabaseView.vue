@@ -67,6 +67,16 @@
               </tbody>
             </table>
           </div>
+          <div class="evidence-actions">
+            <button
+              class="btn-primary submit-btn"
+              @click="submitDatabaseEvidence"
+              :disabled="loading || !results.rows.length"
+            >
+              Submit as evidence
+            </button>
+            <span v-if="evidenceStatus" class="evidence-status">{{ evidenceStatus }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -91,6 +101,7 @@ const loadingDb = ref(true)
 const db = ref(null)
 const tables = ref(['employees', 'access_logs', 'incidents', 'messages'])
 const activeTable = ref('')
+const evidenceStatus = ref('')
 
 onMounted(async () => {
   try {
@@ -122,6 +133,7 @@ function runQuery() {
   queryError.value = ''
   results.value = null
   loading.value = true
+  evidenceStatus.value = ''
 
   const start = performance.now()
   try {
@@ -135,9 +147,6 @@ function runQuery() {
 
     const { columns, values } = res[0]
     results.value = { columns, rows: values }
-
-    // Check if culprit is visible in results
-    checkForClue(columns, values)
   } catch (e) {
     queryError.value = e.message
   } finally {
@@ -145,9 +154,27 @@ function runQuery() {
   }
 }
 
+function submitDatabaseEvidence() {
+  if (!results.value) {
+    evidenceStatus.value = 'Run a query first.'
+    return
+  }
+
+  const found = checkForClue(results.value.columns, results.value.rows)
+  evidenceStatus.value = found
+    ? 'Evidence logged. The vault word trail is now complete.'
+    : 'No compelling evidence in those results. Focus on incidents or messages.'
+}
+
 function checkForClue(columns, values) {
   const culpritId = store.sessionState?.culprit?.id
-  if (!culpritId) return
+  if (!culpritId) return false
+
+  const queryText = sqlInput.value?.toLowerCase?.() ?? ''
+  const clueTables = ['incidents', 'messages']
+  if (!clueTables.some(table => queryText.includes(table))) {
+    return false
+  }
 
   const flat = values.flat().map(String)
   if (flat.includes(String(culpritId))) {
@@ -161,8 +188,10 @@ function checkForClue(columns, values) {
         `Employee ID ${culpritId} appears in query results — cross-reference with incident logs.`
       )
       store.markRoomComplete('database')
+      return true
     }
   }
+  return false
 }
 
 function isSuspicious(row) {
@@ -343,6 +372,41 @@ function isSuspicious(row) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.evidence-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+}
+
+.submit-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ff6b80, #ffb347);
+  color: #0b0b0f;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.submit-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.evidence-status {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .results-header {
