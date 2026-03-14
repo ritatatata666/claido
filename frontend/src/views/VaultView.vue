@@ -108,7 +108,7 @@ import { useGameStore } from '../stores/gameStore.js'
 const store = useGameStore()
 const passphrase = ref('')
 const attempting = ref(false)
-const solved = ref(false)
+const solved = ref(store.isRoomComplete('vault'))
 const feedback = ref('')
 const feedbackType = ref('error')
 const solveTime = ref(0)

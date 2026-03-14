@@ -87,7 +87,7 @@ async function startGame() {
   error.value = ''
   try {
     await store.createSession()
-    router.push('/shell')
+    router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
   } finally {

@@ -28,6 +28,10 @@ let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
 const hintsUsed = ref(0)
+
+// Command history
+const commandHistory = ref([])
+let historyIndex = -1
 const HINTS = [
   'Hidden files start with a dot. Try: ls -a',
   'Environment files store secrets. Try: cat .env',
@@ -35,6 +39,9 @@ const HINTS = [
 ]
 
 onMounted(async () => {
+  // Restore shell history from store
+  commandHistory.value = [...(store.shellHistory || [])]
+
   // Load room content
   try {
     const data = await store.enterRoom('shell')
@@ -79,29 +86,59 @@ onMounted(async () => {
 
   prompt()
 
-  term.onKey(({ key, domEvent }) => {
-    const code = domEvent.keyCode
-
-    if (code === 13) {
+  term.onData(data => {
+    if (data === '\r') {
       // Enter
+      const cmd = inputBuffer.trim()
       term.writeln('')
-      handleCommand(inputBuffer.trim())
+      if (cmd) {
+        commandHistory.value.push(cmd)
+        historyIndex = commandHistory.value.length
+        store.setShellHistory(commandHistory.value)
+      }
+      handleCommand(cmd)
       inputBuffer = ''
       prompt()
-    } else if (code === 8) {
+    } else if (data === '\x7f' || data === '\b') {
       // Backspace
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         term.write('\b \b')
       }
-    } else if (code === 67 && domEvent.ctrlKey) {
+    } else if (data === '\x03') {
       // Ctrl+C
       term.writeln('^C')
       inputBuffer = ''
+      historyIndex = commandHistory.value.length
       prompt()
-    } else if (key && !domEvent.ctrlKey && !domEvent.altKey) {
-      inputBuffer += key
-      term.write(key)
+    } else if (data === '\x1b[A') {
+      // Up arrow — previous command
+      if (commandHistory.value.length === 0) return
+      if (historyIndex > 0) historyIndex--
+      const prev = commandHistory.value[historyIndex] ?? ''
+      clearCurrentInput()
+      inputBuffer = prev
+      term.write(prev)
+    } else if (data === '\x1b[B') {
+      // Down arrow — next command
+      if (historyIndex < commandHistory.value.length - 1) {
+        historyIndex++
+        const next = commandHistory.value[historyIndex] ?? ''
+        clearCurrentInput()
+        inputBuffer = next
+        term.write(next)
+      } else {
+        historyIndex = commandHistory.value.length
+        clearCurrentInput()
+        inputBuffer = ''
+      }
+    } else if (data === '\x1b[C' || data === '\x1b[D') {
+      // Left/right arrows — ignore to prevent cursor corruption
+    } else if (data >= ' ' || data === '\t') {
+      // Printable chars — also handles paste (multi-char data)
+      inputBuffer += data
+      term.write(data)
+      historyIndex = commandHistory.value.length
     }
   })
 })
@@ -110,6 +147,12 @@ onUnmounted(() => {
   resizeObserver?.disconnect()
   term?.dispose()
 })
+
+function clearCurrentInput() {
+  // Erase current input from terminal display
+  term.write('\b \b'.repeat(inputBuffer.length))
+  inputBuffer = ''
+}
 
 function prompt() {
   const user = filesystem?.username || 'analyst'

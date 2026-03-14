@@ -75,7 +75,18 @@
           <div v-if="selectedLog" class="log-detail card">
             <div class="detail-header">
               <span class="detail-title">Log Detail</span>
-              <button class="close-detail" @click="selectedLog = null">✕</button>
+              <div class="detail-actions">
+                <button
+                  class="flag-log-btn"
+                  :class="{ correct: logFlagResult === 'correct', wrong: logFlagResult === 'wrong' }"
+                  @click="flagLog(selectedLog)"
+                >
+                  <span v-if="logFlagResult === 'correct'">✓ Evidence logged</span>
+                  <span v-else-if="logFlagResult === 'wrong'">✗ Not suspicious</span>
+                  <span v-else>⚑ Flag as suspicious</span>
+                </button>
+                <button class="close-detail" @click="selectedLog = null; logFlagResult = null">✕</button>
+              </div>
             </div>
             <div class="detail-fields">
               <div v-for="(val, key) in selectedLog" :key="key" class="detail-field">
@@ -92,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import RoomLayout from '../components/RoomLayout.vue'
 import NpcChat from '../components/NpcChat.vue'
 import { useGameStore } from '../stores/gameStore.js'
@@ -105,9 +116,14 @@ const timeRange = ref('all')
 const selectedLevels = ref(['INFO', 'WARN', 'ERROR', 'DEBUG'])
 const activeIndex = ref('novacorp-*')
 const selectedLog = ref(null)
+const logFlagResult = ref(null)
 
 const indices = ['novacorp-*', 'auth-logs', 'badge-events', 'vault-access']
 const levels = ['INFO', 'WARN', 'ERROR', 'DEBUG']
+
+watch(selectedLog, () => {
+  logFlagResult.value = null
+})
 
 onMounted(async () => {
   try {
@@ -117,12 +133,23 @@ onMounted(async () => {
     logs.value = getDefaultLogs()
   } finally {
     loading.value = false
-    checkForWhistleblower()
   }
 })
 
+const indexServiceMap = {
+  'novacorp-*': null,
+  'auth-logs': 'auth',
+  'badge-events': 'badge',
+  'vault-access': 'vault',
+}
+
 const filteredLogs = computed(() => {
   let result = logs.value
+
+  const indexService = indexServiceMap[activeIndex.value]
+  if (indexService) {
+    result = result.filter(l => l.service === indexService)
+  }
 
   if (!selectedLevels.value.includes('ALL')) {
     result = result.filter(l => selectedLevels.value.includes(l.level))
@@ -151,26 +178,30 @@ const filteredLogs = computed(() => {
 })
 
 function applyFilter() {
-  // reactivity handles it, but check clue
-  checkForWhistleblower()
+  // reactivity handles filtering
+}
+
+function flagLog(log) {
+  const vaultWord = store.sessionState?.vaultWord4
+  const isWhistleblower = log.level === 'ERROR' &&
+    (log.user === 'whistleblower' || log.message?.toLowerCase().includes('whistleblower'))
+  const hasVaultWord = vaultWord && (log.message || '').toLowerCase().includes(vaultWord.toLowerCase())
+
+  if (isWhistleblower && hasVaultWord) {
+    logFlagResult.value = 'correct'
+    store.addClue(
+      'search-vault-word',
+      'NovaSearch',
+      `Whistleblower ERROR log contains keyword: "${vaultWord}".`
+    )
+    store.markRoomComplete('search')
+  } else {
+    logFlagResult.value = 'wrong'
+  }
 }
 
 function checkForWhistleblower() {
-  const visible = filteredLogs.value
-  const whistle = visible.find(l =>
-    l.level === 'ERROR' && (l.user === 'whistleblower' || l.message?.toLowerCase().includes('whistleblower'))
-  )
-  if (whistle) {
-    const vaultWord = store.sessionState?.vaultWord4
-    if (vaultWord && (whistle.message || '').toLowerCase().includes(vaultWord.toLowerCase())) {
-      store.addClue(
-        'search-vault-word',
-        'NovaSearch',
-        `Whistleblower ERROR log contains keyword: "${vaultWord}".`
-      )
-      store.markRoomComplete('search')
-    }
-  }
+  // kept for reference — submission is now manual via flagLog()
 }
 
 function getDefaultLogs() {
@@ -440,6 +471,28 @@ function getDefaultLogs() {
   padding: 10px 16px;
   border-bottom: 1px solid var(--border-color);
 }
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flag-log-btn {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 4px 12px;
+  background: rgba(0, 191, 179, 0.1);
+  border: 1px solid #00bfb3;
+  color: #00bfb3;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.flag-log-btn:hover { background: rgba(0, 191, 179, 0.2); }
+.flag-log-btn.correct { background: rgba(63, 185, 80, 0.1); border-color: #3fb950; color: #3fb950; }
+.flag-log-btn.wrong { background: rgba(248, 81, 73, 0.1); border-color: #f85149; color: #f85149; }
 
 .detail-title {
   font-size: 12px;
