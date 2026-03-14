@@ -91,21 +91,52 @@ const loading = ref(true)
 const selectedEmail = ref(null)
 const activeFolder = ref('inbox')
 const evidenceResult = ref(null)
+const activeVaultWord2 = ref('')
 
 const folders = ['inbox', 'sent', 'flagged']
 const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
 
 onMounted(async () => {
+  const vaultWord2 = resolveVaultWord2()
+  activeVaultWord2.value = vaultWord2
   try {
     const data = await store.enterRoom('mail')
     const raw = Array.isArray(data) ? data : []
-    emails.value = raw.map(e => ({ ...e, isFlagged: false }))
+    emails.value = normalizeEmails(raw, vaultWord2)
   } catch (e) {
-    emails.value = getDefaultEmails()
+    emails.value = getDefaultEmails(vaultWord2)
   } finally {
     loading.value = false
   }
 })
+
+function resolveVaultWord2() {
+  const fromSession = String(store.sessionState?.vaultWord2 || '').toLowerCase().trim()
+  if (fromSession) return fromSession
+  const fallback = 'midnight'
+  console.warn('[NovaMail] Using fallback vaultWord2 because session value is missing.')
+  return fallback
+}
+
+function normalizeEmails(rawEmails, vaultWord2) {
+  const normalized = rawEmails.map(e => ({ ...e, isFlagged: false }))
+  const hasClue = normalized.some(e => String(e.body || '').toLowerCase().includes(vaultWord2))
+  if (hasClue) return normalized
+
+  if (normalized.length > 0) {
+    const idx = normalized.findIndex(e => String(e.from || '').toLowerCase().includes('unknown'))
+    const target = idx >= 0 ? idx : 0
+    normalized[target] = {
+      ...normalized[target],
+      body: `${String(normalized[target].body || '').trim()} The word you need is "${vaultWord2}".`.trim(),
+    }
+    console.warn('[NovaMail] Injected fallback clue word into room data to keep puzzle solvable.')
+    return normalized
+  }
+
+  console.warn('[NovaMail] Mail room data empty; using default emails with fallback clue word.')
+  return getDefaultEmails(vaultWord2)
+}
 
 const filteredEmails = computed(() => {
   if (activeFolder.value === 'flagged') return emails.value.filter(e => e.isFlagged)
@@ -132,7 +163,7 @@ function toggleFlag(email) {
 }
 
 function submitEvidence(email) {
-  const vaultWord = store.sessionState?.vaultWord2
+  const vaultWord = activeVaultWord2.value
   if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
     evidenceResult.value = 'correct'
     store.addClue(
@@ -157,7 +188,7 @@ function formatDateFull(iso) {
   return new Date(iso).toLocaleString('en-AU')
 }
 
-function getDefaultEmails() {
+function getDefaultEmails(vaultWord2) {
   return [
     {
       id: 'msg-001',
@@ -176,7 +207,7 @@ function getDefaultEmails() {
       to: 'analyst@novacorp.com',
       subject: 'Re: Tonight',
       date: '2025-03-02T20:11:00',
-      body: 'Everything is ready for midnight. Come alone. The word you need is "midnight". Delete this.',
+      body: `Everything is ready for the handover. Come alone. The word you need is "${vaultWord2}". Delete this.`,
       isRead: false,
       folder: 'inbox',
       isFlagged: false,

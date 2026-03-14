@@ -27,8 +27,15 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
+const activeVaultWord1 = ref('')
+const activeCulpritId = ref(1001)
 
 onMounted(async () => {
+  const vaultWord1 = resolveVaultWord1()
+  const culpritId = Number(store.sessionState?.culprit?.id) || 1001
+  activeVaultWord1.value = vaultWord1
+  activeCulpritId.value = culpritId
+
   // Restore shell history from store
   const restoredHistory = Array.isArray(store.shellHistory) ? store.shellHistory : []
   commandHistory.value = [...restoredHistory]
@@ -37,9 +44,9 @@ onMounted(async () => {
   // Load room content
   try {
     const data = await store.enterRoom('shell')
-    filesystem = data
+    filesystem = normalizeFilesystem(data)
   } catch (e) {
-    filesystem = getDefaultFilesystem()
+    filesystem = getDefaultFilesystem(vaultWord1, culpritId)
   }
 
   // Init terminal
@@ -379,7 +386,7 @@ function cmdCat(arg) {
 
   // Check for suspicious access log clue
   if (path.endsWith('access.log')) {
-    const culpritId = store.sessionState?.culprit?.id
+    const culpritId = activeCulpritId.value
     if (culpritId && content.includes(String(culpritId))) {
       store.addClue(
         'shell-access-log',
@@ -407,7 +414,7 @@ function cmdBase64(args) {
     const decoded = atob(value)
     writelnTerminal(decoded)
     // Check if the decoded value matches the session vault word
-    const expected = store.sessionState?.vaultWord1
+    const expected = activeVaultWord1.value
     if (expected && decoded === expected) {
       store.addClue(
         'shell-vault-word',
@@ -475,8 +482,9 @@ function cmdFind(args) {
 }
 
 function normalizeFilesystem(data) {
-  if (!data || typeof data !== 'object') return getDefaultFilesystem()
+  if (!data || typeof data !== 'object') return getDefaultFilesystem(resolveVaultWord1(), Number(store.sessionState?.culprit?.id) || 1001)
   const home = `/home/${data.username || 'analyst'}`
+  const vaultWord1 = resolveVaultWord1()
   const rawFiles = data.files || {}
   const normalized = {}
   for (const [key, value] of Object.entries(rawFiles)) {
@@ -489,21 +497,46 @@ function normalizeFilesystem(data) {
   const rawDirs = (data.dirs || []).map(d => d.startsWith('/') ? d : `${home}/${d}`)
   // Always ensure home and home/logs exist as dirs
   const dirSet = new Set([home, `${home}/logs`, '/etc', '/var/log', '/tmp', ...rawDirs])
-  return { ...data, files: normalized, dirs: [...dirSet] }
+  const ensuredFiles = ensureShellVaultWordFile(normalized, home, vaultWord1)
+  return { ...data, files: ensuredFiles, dirs: [...dirSet] }
 }
 
-function getDefaultFilesystem() {
+function resolveVaultWord1() {
+  const fromSession = String(store.sessionState?.vaultWord1 || '').toLowerCase().trim()
+  if (fromSession) return fromSession
+  const fallback = 'midnight'
+  console.warn('[NovaShell] Using fallback vaultWord1 because session value is missing.')
+  return fallback
+}
+
+function getDefaultFilesystem(vaultWord1, culpritId = 1001) {
+  const encodedWord = btoa(vaultWord1)
   return {
     hostname: 'novacorp-srv-01',
     username: 'analyst',
     files: {
-      '/home/analyst/.env': 'VAULT_WORD=bWlkbmlnaHQ=\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123',
-      '/home/analyst/logs/access.log': '[01:17:22] WARN  Employee 1001 accessed Server Room B (AFTER_HOURS)\n[08:30:01] INFO  Normal access main entrance\n[09:15:44] INFO  Engineering floor scan',
+      '/home/analyst/.env': `VAULT_WORD=${encodedWord}\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123`,
+      '/home/analyst/logs/access.log': `[01:17:22] WARN  Employee ${culpritId} accessed Server Room B (AFTER_HOURS)\n[08:30:01] INFO  Normal access main entrance\n[09:15:44] INFO  Engineering floor scan`,
       '/home/analyst/readme.txt': 'Welcome to NovaCorp analyst workstation.\nCase file: PROJECT_NOVA_INCIDENT_2025.',
       '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash\nanalyst:x:1000:1000::/home/analyst:/bin/bash',
     },
     dirs: ['/home/analyst', '/home/analyst/logs', '/etc', '/var/log', '/tmp'],
   }
+}
+
+function ensureShellVaultWordFile(files, home, vaultWord1) {
+  const envPath = `${home}/.env`
+  const expectedEncoded = btoa(vaultWord1)
+  const existing = String(files[envPath] || '')
+  const hasExpected = existing.includes(`VAULT_WORD=${expectedEncoded}`)
+  if (hasExpected) return files
+
+  const nextEnv = existing
+    ? existing.replace(/VAULT_WORD=.*$/m, `VAULT_WORD=${expectedEncoded}`)
+    : `VAULT_WORD=${expectedEncoded}\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123`
+  files[envPath] = nextEnv.includes('VAULT_WORD=') ? nextEnv : `VAULT_WORD=${expectedEncoded}\n${nextEnv}`
+  console.warn('[NovaShell] Injected vault word into .env fallback content to keep puzzle solvable.')
+  return files
 }
 </script>
 
