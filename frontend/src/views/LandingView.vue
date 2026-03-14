@@ -1,23 +1,28 @@
 <template>
   <div class="landing">
     <div class="landing-board">
-      <span class="board-thread board-thread--one"></span>
-      <span class="board-thread board-thread--two"></span>
-      <span class="board-thread board-thread--three"></span>
 
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
         <span class="case-file">CASE FILE #NC-2025-0303</span>
       </div>
 
-      <!-- Glitchy heading -->
+      <!-- Stamp heading -->
       <div class="hero-block">
-        <h1 class="claido-heading" data-text="CLAIDO">CLAIDO</h1>
-        <p class="hero-subtitle">NovaCorp Internal Breach — Investigator Access Only</p>
+        <div class="stamp-frame">
+          <h1 class="claido-heading" data-text="CLAIDO">CLAIDO</h1>
+        </div>
+        <div class="case-header">
+          <span class="case-header__label">NovaCorp Internal Breach</span>
+          <span class="case-header__divider">—</span>
+          <span class="case-header__tag">Investigator Access Only</span>
+        </div>
       </div>
 
-      <!-- Briefing card styled as classified document -->
-      <div class="briefing-card">
+      <!-- Briefing card styled as manila case folder -->
+      <div class="folder-wrapper">
+        <div class="folder-tab">CASE REPORT</div>
+        <div class="briefing-card">
         <div class="watermark">TOP SECRET</div>
         <div class="card-inner">
           <div class="card-header">
@@ -41,22 +46,77 @@
           <div class="declassified-stamp">DECLASSIFIED</div>
         </div>
       </div>
+      </div>
 
       <!-- Error -->
       <div v-if="error" class="error-msg">{{ error }}</div>
 
-      <!-- CTA button -->
-      <button
-        class="start-btn"
-        :disabled="loading"
-        @click="startGame"
-      >
-        <span v-if="loading">
-          <span class="spinner-dot"></span>
-          Generating case file...
-        </span>
-        <span v-else>BEGIN INVESTIGATION</span>
-      </button>
+      <!-- Mode Selection -->
+      <div class="mode-card">
+        <h3 class="mode-card__title">Select Mode</h3>
+        <div class="mode-card__toggle">
+          <button
+            :class="['mode-card__tab', 'mode-card__tab--standard', { active: selectedMode === 'standard' }]"
+            @click="selectedMode = 'standard'"
+          >Solo</button>
+          <button
+            :class="['mode-card__tab', 'mode-card__tab--team', { active: selectedMode === 'team' }]"
+            @click="selectedMode = 'team'"
+          >Team</button>
+        </div>
+
+        <!-- Solo mode -->
+        <template v-if="selectedMode === 'standard'">
+          <p class="mode-card__desc">Investigate alone. All seven rooms are yours to explore.</p>
+          <button
+            class="start-btn"
+            :disabled="loading"
+            @click="startSoloSession"
+          >
+            <span v-if="loading">
+              <span class="spinner-dot"></span>
+              Generating case file...
+            </span>
+            <span v-else>BEGIN INVESTIGATION</span>
+          </button>
+        </template>
+
+        <!-- Team mode -->
+        <template v-else>
+          <p class="mode-card__desc">Play with friends. One hosts, others join with a code.</p>
+          <div class="team-lobby-grid">
+            <!-- Create -->
+            <div class="team-lobby-card">
+              <div class="team-lobby-card__inner">
+                <span class="team-lobby-card__eyebrow">Host a Room</span>
+                <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
+                <div class="team-lobby-card__actions">
+                  <button class="team-lobby-card__button" :disabled="loading" @click="createTeamRoom">
+                    <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
+                    <span v-else>Create Team Room</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Join -->
+            <div class="team-lobby-card">
+              <div class="team-lobby-card__inner">
+                <span class="team-lobby-card__eyebrow">Join a Room</span>
+                <p class="mode-card__team-text">Enter the 6-character code from your host to join their session.</p>
+                <div class="team-lobby-card__actions">
+                  <input v-model="joinCodeInput" class="npc-input" placeholder="Join code (e.g. ABC123)" maxlength="6" style="text-transform:uppercase" />
+                  <input v-model="joinName" class="npc-input" placeholder="Your display name" />
+                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim()" @click="joinExistingSession">
+                    <span v-if="joinLoading"><span class="spinner-dot"></span> Joining...</span>
+                    <span v-else>Join Session</span>
+                  </button>
+                  <p v-if="joinError" class="team-lobby-card__error">{{ joinError }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
     </div>
@@ -139,44 +199,44 @@ async function createTeamRoom() {
 <style scoped>
 .landing {
   min-height: 100vh;
-  background: #0a0a0a;
   display: flex;
   justify-content: center;
   padding: 40px 24px 60px;
   overflow-y: auto;
   position: relative;
   flex-direction: column;
+  align-items: center;
   gap: 24px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.015) 0px,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+}
+
+.landing-board {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  position: relative;
 }
 
 .board-thread {
-  position: absolute;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(133, 18, 21, 0.2), rgba(173, 29, 33, 0.78), rgba(133, 18, 21, 0.2));
-  box-shadow: 0 1px 4px rgba(102, 17, 20, 0.16);
-  pointer-events: none;
-}
-
-.board-thread--one {
-  top: 92px;
-  right: 26%;
-  width: 220px;
-  transform: rotate(-12deg);
-}
-
-.board-thread--two {
-  top: 250px;
-  left: 38%;
-  width: 280px;
-  transform: rotate(10deg);
-}
-
-.board-thread--three {
-  bottom: 84px;
-  left: 16%;
-  width: 240px;
-  transform: rotate(-15deg);
+  display: none;
 }
 
 .evidence-strip,
@@ -244,15 +304,15 @@ async function createTeamRoom() {
 
 .classified-badge {
   color: var(--accent-red);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
 }
 
 .case-file {
-  color: var(--text-muted);
-  font-size: 11px;
+  color: rgba(255, 240, 220, 0.5);
+  font-size: 12px;
   letter-spacing: 1.2px;
 }
 
@@ -269,21 +329,103 @@ async function createTeamRoom() {
   color: var(--text-muted);
 }
 
-.claido-heading {
-  margin: 0;
-  font-size: clamp(52px, 10vw, 92px);
-  letter-spacing: 10px;
-  color: #311d0e;
-  text-transform: uppercase;
-  font-family: var(--font-display);
+.hero-block {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-.hero-subtitle {
+.stamp-frame {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 32px;
+  border: 4px solid rgba(183, 11, 11, 0.95);
+  border-radius: 6px;
+  transform: rotate(-3deg);
+  position: relative;
+  cursor: default;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stamp-frame::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid rgba(183, 11, 11, 0.3);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.stamp-frame:hover {
+  border-color: rgba(183, 11, 11, 0.95);
+  box-shadow:
+    0 0 12px rgba(160, 26, 26, 0.5),
+    0 0 30px rgba(160, 26, 26, 0.25);
+}
+
+.stamp-frame:hover::before {
+  border-color: rgba(160, 26, 26, 0.6);
+}
+
+.claido-heading {
   margin: 0;
-  max-width: 620px;
-  font-size: 15px;
-  line-height: 1.65;
-  color: var(--text-secondary);
+  font-size: clamp(48px, 10vw, 90px);
+  letter-spacing: 14px;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  color: rgba(183, 11, 11, 0.95);
+  transition: color 0.1s, text-shadow 0.1s;
+}
+
+.stamp-frame:hover .claido-heading {
+  color: #a01a1a;
+  text-shadow:
+    0 0 8px rgba(160, 26, 26, 0.9),
+    0 0 20px rgba(160, 26, 26, 0.7),
+    0 0 40px rgba(160, 26, 26, 0.5);
+  animation: red-flicker 0.15s steps(2) infinite;
+}
+
+@keyframes red-flicker {
+  0% { opacity: 1; }
+  50% { opacity: 0.85; }
+  100% { opacity: 1; }
+}
+
+.case-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.case-header__label {
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 2vw, 16px);
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255, 220, 180, 0.7);
+}
+
+.case-header__divider {
+  color: rgba(255, 220, 180, 0.3);
+  font-size: 16px;
+}
+
+.case-header__tag {
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.5vw, 13px);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(220, 180, 140, 0.85);
+  border: 1px solid rgba(220, 180, 140, 0.4);
+  padding: 3px 10px;
+  border-radius: 2px;
 }
 
 .hero-tag {
@@ -305,8 +447,43 @@ async function createTeamRoom() {
   align-items: start;
 }
 
+.folder-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.folder-tab {
+  position: relative;
+  display: inline-block;
+  margin-left: 24px;
+  padding: 6px 20px 4px;
+  background: #c8a97a;
+  border-radius: 6px 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #5a3d24;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
 .briefing-card {
-  min-height: 100%;
+  width: 100%;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 0 6px 6px 6px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 .briefing-card::after,
@@ -326,7 +503,7 @@ async function createTeamRoom() {
   transform: translate(-50%, -50%) rotate(-24deg);
   font-size: clamp(44px, 9vw, 88px);
   letter-spacing: 6px;
-  color: rgba(185, 70, 54, 0.08);
+  color: rgba(139, 69, 19, 0.1);
   font-weight: 900;
   pointer-events: none;
 }
@@ -334,13 +511,13 @@ async function createTeamRoom() {
 .card-inner {
   position: relative;
   z-index: 1;
-  padding: 28px 28px 32px;
+  padding: 32px 32px 36px;
 }
 
 .card-header {
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid rgba(125, 96, 69, 0.24);
+  border-bottom: 2px solid rgba(139, 100, 60, 0.3);
 }
 
 .card-title-block {
@@ -351,22 +528,23 @@ async function createTeamRoom() {
 }
 
 .card-stamp-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
+  color: #7a5c3a;
 }
 
 .card-date {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: #a08868;
 }
 
 .card-summary {
   margin: 0 0 20px;
-  color: var(--text-secondary);
+  color: #7a5c3a;
   line-height: 1.8;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .room-list {
@@ -382,15 +560,16 @@ async function createTeamRoom() {
   grid-template-columns: auto auto 1fr;
   gap: 10px;
   align-items: baseline;
-  color: var(--text-secondary);
+  color: #7a5c3a;
+  font-size: 15px;
 }
 
 .bullet {
-  color: var(--accent-red);
+  color: #a0553a;
 }
 
 .room-list strong {
-  color: var(--text-primary);
+  color: #5a3d24;
 }
 
 .declassified-stamp {
@@ -440,11 +619,12 @@ async function createTeamRoom() {
 
 .start-btn {
   width: 100%;
-  padding: 16px 20px;
+  padding: 18px 24px;
   text-transform: uppercase;
   letter-spacing: 3px;
   font-family: var(--font-mono);
   font-weight: 800;
+  font-size: 15px;
 }
 
 .spinner-dot {
@@ -452,7 +632,7 @@ async function createTeamRoom() {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: #fffaf0;
   margin-right: 10px;
   vertical-align: middle;
   animation: spinner-pulse 0.8s ease-in-out infinite;
@@ -475,7 +655,9 @@ async function createTeamRoom() {
 .error-msg {
   padding: 14px 16px;
   color: #8f2018;
-  border-color: rgba(143, 32, 24, 0.3);
+  border: 1px solid rgba(143, 32, 24, 0.3);
+  background: rgba(185, 70, 54, 0.08);
+  border-radius: 6px;
 }
 
 @media (max-width: 860px) {
@@ -509,22 +691,33 @@ async function createTeamRoom() {
 
 .mode-card {
   width: 100%;
-  background: rgba(6, 6, 6, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 20px 24px;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+  gap: 16px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 .mode-card__title {
   margin: 0;
-  font-size: 13px;
-  letter-spacing: 1.2px;
+  font-size: 14px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: #9999a3;
+  color: #7a5c3a;
+  font-weight: 700;
 }
 
 .mode-card__toggle {
@@ -534,43 +727,43 @@ async function createTeamRoom() {
 
 .mode-card__tab {
   flex: 1;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  background: rgba(8, 10, 20, 0.95);
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  padding: 12px 16px;
+  border: 1px solid rgba(139, 100, 60, 0.3);
+  border-radius: 6px;
+  background: rgba(200, 169, 122, 0.5);
+  color: #5a3d24;
+  font-size: 14px;
+  padding: 14px 18px;
   cursor: pointer;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
-  box-shadow: inset 0 -2px 0 rgba(255, 255, 255, 0.08);
 }
 
 .mode-card__tab--standard {
-  background: linear-gradient(135deg, rgba(24, 10, 37, 0.9), rgba(39, 18, 64, 0.9));
+  background: rgba(200, 169, 122, 0.5);
 }
 
 .mode-card__tab--team {
-  background: linear-gradient(135deg, rgba(7, 8, 24, 0.95), rgba(101, 24, 120, 0.9));
+  background: rgba(200, 169, 122, 0.4);
 }
 
 .mode-card__tab:not(.active) {
-  opacity: 0.75;
+  opacity: 0.65;
 }
 
 .mode-card__tab.active {
-  border-color: #c48bff;
-  box-shadow: 0 12px 28px rgba(196, 139, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: #8b3a2a;
+  box-shadow: 0 6px 16px rgba(139, 58, 42, 0.25);
   transform: translateY(-2px);
-  color: #fff;
+  background: linear-gradient(180deg, #c45144, #a83c30);
+  color: #fffaf0;
 }
 
 .mode-card__desc {
   margin: 0;
-  font-size: 13px;
-  color: #c3c3cd;
+  font-size: 14px;
+  color: #7a5c3a;
 }
 
 .mode-card__team {
@@ -615,8 +808,8 @@ async function createTeamRoom() {
 
 .mode-card__team-text {
   margin: 0;
-  font-size: 13px;
-  color: #c0c0c9;
+  font-size: 14px;
+  color: #7a5c3a;
   line-height: 1.4;
 }
 
@@ -635,12 +828,20 @@ async function createTeamRoom() {
 
 .team-lobby-card {
   width: 100%;
-  background: linear-gradient(135deg, rgba(14, 15, 30, 0.95), rgba(48, 22, 63, 0.95));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
   padding: 20px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 18px 40px rgba(0, 0, 0, 0.6);
-  min-height: 280px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  min-height: 220px;
 }
 
 .team-lobby-card__inner {
@@ -658,16 +859,17 @@ async function createTeamRoom() {
 
 .team-lobby-card__button {
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 14px;
-  background: linear-gradient(135deg, #8c3bff, #d22766);
-  color: #fff;
+  background: linear-gradient(180deg, #c45144, #a83c30);
+  color: #fffaf0;
   font-weight: 700;
   cursor: pointer;
   text-transform: uppercase;
   font-size: 13px;
   letter-spacing: 1px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 8px 18px rgba(137, 43, 31, 0.2);
 }
 
 .team-lobby-card__button:disabled {
@@ -679,37 +881,37 @@ async function createTeamRoom() {
 
 .team-lobby-card__button:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(210, 39, 102, 0.4);
+  box-shadow: 0 10px 24px rgba(185, 70, 54, 0.3);
 }
 
 .team-lobby-card__hint {
   font-size: 12px;
-  color: #b4b1c7;
+  color: #a08868;
 }
 
 .team-lobby-card__error {
   font-size: 12px;
-  color: #ff8b8b;
+  color: #8f2018;
 }
 
 .team-lobby-card__eyebrow {
   font-size: 11px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(208, 183, 255, 0.9);
+  color: #8b3a2a;
 }
 
 .team-lobby-card__title {
   margin: 0;
   font-size: 18px;
   letter-spacing: 1px;
-  color: #f5f5ff;
+  color: #5a3d24;
 }
 
 .team-lobby-card__body {
   margin: 0;
   font-size: 13px;
-  color: rgba(220, 220, 255, 0.9);
+  color: #7a5c3a;
   line-height: 1.5;
 }
 
@@ -719,7 +921,7 @@ async function createTeamRoom() {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: rgba(195, 195, 255, 0.9);
+  color: #7a5c3a;
 }
 
 .team-lobby-card__list li {
@@ -729,14 +931,15 @@ async function createTeamRoom() {
 
 .join-card {
   width: 100%;
-  background: rgba(4, 4, 6, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 249, 238, 0.96), rgba(230, 215, 192, 0.94));
+  border: 1px solid rgba(90, 65, 42, 0.2);
+  border-radius: 6px;
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-height: 280px;
+  box-shadow: var(--paper-shadow);
 }
 
 .join-card__row {
@@ -749,27 +952,28 @@ async function createTeamRoom() {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #8d8d95;
+  color: var(--text-muted);
 }
 
 .join-card__input {
-  background: #0b0b11;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(90, 65, 42, 0.2);
+  border-radius: 6px;
   padding: 10px 12px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .join-card__button {
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 12px;
-  background: linear-gradient(135deg, #ff6b80, #ffb347);
-  color: #0b0b0f;
+  background: linear-gradient(180deg, #c45144, #a83c30);
+  color: #fffaf0;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.2s ease;
+  box-shadow: 0 8px 18px rgba(137, 43, 31, 0.2);
 }
 
 .join-card__button:disabled {
@@ -779,7 +983,7 @@ async function createTeamRoom() {
 }
 
 .join-card__error {
-  color: #ff7b7b;
+  color: #8f2018;
   font-size: 12px;
   margin: 0;
 }
