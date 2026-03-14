@@ -27,12 +27,18 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
+const hintsUsed = ref(0)
+const HINTS = [
+  'Hidden files start with a dot. Try: ls -a',
+  'Environment files store secrets. Try: cat .env',
+  'The VAULT_WORD is base64 encoded. Try: base64 -d <the_value>',
+]
 
 onMounted(async () => {
   // Load room content
   try {
     const data = await store.enterRoom('shell')
-    filesystem = data
+    filesystem = normalizeFilesystem(data)
   } catch (e) {
     filesystem = getDefaultFilesystem()
   }
@@ -119,7 +125,7 @@ function handleCommand(cmd) {
 
   switch (prog) {
     case 'help':
-      term.writeln('Available commands: ls, cat, cd, pwd, whoami, echo, env, ps, grep, find, mkdir, touch, rm, uname, hostname, date, history, sudo, chmod, man, clear, help')
+      term.writeln('Available commands: ls, cat, cd, pwd, whoami, echo, env, ps, grep, find, mkdir, touch, rm, uname, hostname, date, history, sudo, chmod, man, base64, hint, clear, help')
       term.writeln('')
       break
 
@@ -136,7 +142,7 @@ function handleCommand(cmd) {
       break
 
     case 'ls':
-      cmdLs(args[0])
+      cmdLs(args)
       break
 
     case 'cat':
@@ -210,6 +216,14 @@ function handleCommand(cmd) {
       term.writeln(`No manual entry for ${args[0] || prog}`)
       break
 
+    case 'base64':
+      cmdBase64(args)
+      break
+
+    case 'hint':
+      cmdHint()
+      break
+
     case 'ssh':
     case 'scp':
     case 'curl':
@@ -247,8 +261,14 @@ function resolvePath(p) {
   return `${cwd}/${p}`.replace('//', '/')
 }
 
-function cmdLs(arg) {
-  const path = resolvePath(arg)
+function cmdLs(rawArgs) {
+  // Separate flags (starting with -) from the path argument
+  const lsArgs = Array.isArray(rawArgs) ? rawArgs : (rawArgs ? [rawArgs] : [])
+  const flags = lsArgs.filter(a => a.startsWith('-')).join('')
+  const showHidden = flags.includes('a')
+  const pathArg = lsArgs.find(a => !a.startsWith('-'))
+
+  const path = resolvePath(pathArg)
   const dirs = filesystem?.dirs || []
   const files = filesystem?.files || {}
 
@@ -270,18 +290,18 @@ function cmdLs(arg) {
   })
 
   if (children.length === 0) {
-    term.writeln(`ls: ${path}: No such file or directory`)
+    term.writeln(`ls: cannot access '${pathArg || path}': No such file or directory`)
     return
   }
 
-  const dirNames = children.filter(c => c.type === 'dir').map(c => `\x1b[34m${c.name}/\x1b[0m`)
-  const fileNames = children.filter(c => c.type === 'file').map(c => {
-    const hidden = c.name.startsWith('.')
-    return hidden ? `\x1b[90m${c.name}\x1b[0m` : c.name
-  })
+  const visible = showHidden ? children : children.filter(c => !c.name.startsWith('.'))
 
-  const all = [...dirNames, ...fileNames]
-  term.writeln(all.join('  '))
+  const dirNames  = visible.filter(c => c.type === 'dir').map(c => `\x1b[34m${c.name}/\x1b[0m`)
+  const fileNames = visible.filter(c => c.type === 'file').map(c =>
+    c.name.startsWith('.') ? `\x1b[90m${c.name}\x1b[0m` : c.name
+  )
+
+  term.writeln([...dirNames, ...fileNames].join('  '))
 }
 
 function cmdCd(arg) {
@@ -306,34 +326,20 @@ function cmdCat(arg) {
   const path = resolvePath(arg)
   const files = filesystem?.files || {}
 
-  const content = files[path]
+  // Exact path lookup first; fall back to matching by filename anywhere in fs
+  let content = files[path]
+  if (content === undefined) {
+    const filename = arg.split('/').pop()
+    const match = Object.entries(files).find(([k]) => k.split('/').pop() === filename)
+    if (match) content = match[1]
+  }
   if (content === undefined) {
     term.writeln(`\x1b[31mcat: ${arg}: No such file or directory\x1b[0m`)
     return
   }
 
-  // Special handling for .env — detect base64 vault word
-  if (arg === '.env' || path.endsWith('.env')) {
-    const lines = content.split('\n')
-    lines.forEach(line => {
-      if (line.startsWith('VAULT_WORD=')) {
-        const b64 = line.split('=')[1]
-        const decoded = atob(b64)
-        term.writeln(`\x1b[33m${line}\x1b[0m`)
-        term.writeln(`\x1b[90m# decoded: ${decoded}\x1b[0m`)
-        store.addClue(
-          'shell-vault-word',
-          'NovaShell',
-          `Found in .env: VAULT_WORD = ${decoded}`
-        )
-        store.markRoomComplete('shell')
-      } else {
-        term.writeln(line)
-      }
-    })
-  } else {
-    content.split('\n').forEach(line => term.writeln(line))
-  }
+  // Print raw file content without any decoding
+  content.split('\n').forEach(line => term.writeln(line))
 
   // Check for suspicious access log clue
   if (path.endsWith('access.log')) {
@@ -348,6 +354,46 @@ function cmdCat(arg) {
   }
 
   term.writeln('')
+}
+
+function cmdBase64(args) {
+  const flagIdx = args.indexOf('-d')
+  if (flagIdx < 0) {
+    term.writeln('Usage: base64 -d <value>')
+    return
+  }
+  const value = args.find((a, i) => i !== flagIdx)
+  if (!value) {
+    term.writeln('base64: missing operand')
+    return
+  }
+  try {
+    const decoded = atob(value)
+    term.writeln(decoded)
+    // Check if the decoded value matches the session vault word
+    const expected = store.sessionState?.vaultWord1
+    if (expected && decoded === expected) {
+      store.addClue(
+        'shell-vault-word',
+        'NovaShell',
+        `Found in .env: VAULT_WORD = ${decoded}`
+      )
+      store.markRoomComplete('shell')
+    }
+  } catch (e) {
+    term.writeln(`\x1b[31mbase64: invalid input — not valid base64\x1b[0m`)
+  }
+}
+
+function cmdHint() {
+  const MAX_HINTS = 3
+  if (hintsUsed.value >= MAX_HINTS) {
+    term.writeln('\x1b[33mNo hints remaining.\x1b[0m')
+    return
+  }
+  const hint = HINTS[hintsUsed.value]
+  hintsUsed.value++
+  term.writeln(`\x1b[33m[HINT ${hintsUsed.value}/${MAX_HINTS}]\x1b[0m ${hint}`)
 }
 
 function cmdGrep(args) {
@@ -390,6 +436,24 @@ function cmdFind(args) {
     return
   }
   results.forEach(r => term.writeln(r))
+}
+
+function normalizeFilesystem(data) {
+  if (!data || typeof data !== 'object') return getDefaultFilesystem()
+  const home = `/home/${data.username || 'analyst'}`
+  const rawFiles = data.files || {}
+  const normalized = {}
+  for (const [key, value] of Object.entries(rawFiles)) {
+    // If the key is already an absolute path, keep it
+    // Otherwise treat it as relative to the home directory
+    const absKey = key.startsWith('/') ? key : `${home}/${key}`
+    normalized[absKey] = value
+  }
+  // Normalise dirs too
+  const rawDirs = (data.dirs || []).map(d => d.startsWith('/') ? d : `${home}/${d}`)
+  // Always ensure home and home/logs exist as dirs
+  const dirSet = new Set([home, `${home}/logs`, '/etc', '/var/log', '/tmp', ...rawDirs])
+  return { ...data, files: normalized, dirs: [...dirSet] }
 }
 
 function getDefaultFilesystem() {

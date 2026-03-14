@@ -41,6 +41,7 @@ public class AiService
         {
             model = Model,
             max_tokens = maxTokens,
+            temperature = 1.1,
             messages = new[]
             {
                 new { role = "system", content = systemPrompt },
@@ -93,27 +94,35 @@ public class AiService
 
     public async Task<ClaudeGeneratedSession> GenerateSessionAsync()
     {
-        var prompt = """
-You are generating a mystery game session. Return ONLY valid JSON, no markdown, no explanation.
+        var rng = new Random();
+        var culpritId = 1001 + rng.Next(0, 8);
+        var seed = rng.Next(10000, 99999);
 
-Generate a corporate murder mystery with these exact fields:
-{
+        var prompt = $"""
+You are generating a mystery game session. Return ONLY valid JSON, no markdown, no explanation.
+Seed: {seed} — use this to ensure a UNIQUE, creative scenario different from any previous run.
+
+Generate a corporate breach mystery with these exact fields:
+{{
   "culpritName": "FirstName LastName",
   "culpritDepartment": "one of: Engineering, Security, Finance, HR, Executive",
   "culpritRole": "job title",
-  "motive": "one sentence motive",
+  "motive": "one vivid sentence — be creative, avoid clichés like 'greed' or 'revenge'",
   "incidentTime": "HH:MM between 00:00 and 03:00",
   "incidentDate": "2025-03-03",
   "employees": [
-    { "id": 1001, "name": "...", "department": "...", "role": "...", "accessLevel": 1 },
-    ... 8 employees total, culprit must be id 1001, accessLevels 1-5
+    {{ "id": 1001, "name": "...", "department": "...", "role": "...", "accessLevel": 3 }},
+    ... 8 employees total with ids 1001–1008, accessLevels 1–5 varied
   ],
-  "badgeDiscrepancy": "one sentence describing what badge log shows vs digital log",
-  "vaultWord1": "single lowercase word theme: time",
-  "vaultWord2": "single lowercase word theme: location",
-  "vaultWord3": "single lowercase word theme: identity",
-  "vaultWord4": "single lowercase word theme: motive"
-}
+  "badgeDiscrepancy": "one sentence describing what the physical badge log shows vs the digital access log",
+  "vaultWord1": "single creative lowercase word with theme: time (NOT midnight, not dawn — pick something unusual)",
+  "vaultWord2": "single creative lowercase word with theme: location (NOT vault, NOT server — pick something unusual)",
+  "vaultWord3": "single creative lowercase word with theme: identity (NOT anonymous — pick something unusual)",
+  "vaultWord4": "single creative lowercase word with theme: motive (NOT greed, NOT revenge — pick something unusual)"
+}}
+
+IMPORTANT: The culprit must have employee id {culpritId}. All other employees are innocent.
+Generate all 8 employees with realistic diverse names and roles. Vault words must all be DIFFERENT from each other.
 """;
 
         var raw = await CompleteAsync("You are a mystery game content generator. Output only raw JSON.", prompt, 4000);
@@ -223,7 +232,8 @@ One email from an unknown external address hints at a secret meeting the night o
 Session context: {{ctx}}
 
 Generate 6 fake corporate wiki pages for a CTF mystery game. The culprit is {{s.Culprit.Name}}.
-One page must have a section ROT13-encoded that contains the vault word "{{s.VaultWord3}}".
+Exactly ONE page must have hasRedacted=true with a redactedSection that is the ROT13 encoding of a sentence containing the vault word "{{s.VaultWord3}}".
+All other pages have hasRedacted=false and no redactedSection.
 Return a JSON array:
 [
   {
@@ -232,12 +242,21 @@ Return a JSON array:
     "category": "...",
     "lastModified": "2025-03-01",
     "author": "...",
-    "content": "...",
+    "content": "markdown content of page",
     "hasRedacted": false
+  },
+  {
+    "id": "page-002",
+    "title": "...",
+    "category": "Security",
+    "lastModified": "2025-03-01",
+    "author": "...",
+    "content": "page content without the redacted part",
+    "hasRedacted": true,
+    "redactedSection": "ROT13 of a sentence containing the word {{s.VaultWord3}}"
   }
 ]
 Include pages about: employee handbook, security protocols, incident response, org chart, project Nova, server room access.
-The page with the ROT13 section should have a note saying [REDACTED - Security Classification Level 4] before the encoded text.
 """;
 
     private static string BuildSearchPrompt(string ctx, SessionState s) => $$"""

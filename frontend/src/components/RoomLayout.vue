@@ -10,6 +10,9 @@
       </div>
       <div class="topbar-right">
         <span class="timer">{{ formattedTime }}</span>
+        <button v-if="nextRoom" class="next-room-btn" @click="goToRoom(nextRoom)">
+          {{ nextRoom.label }} →
+        </button>
       </div>
     </header>
 
@@ -51,6 +54,7 @@
           done: store.isRoomComplete(room.id)
         }]"
         :title="room.label"
+        @click="goToRoom(room)"
       >
         <span class="dot-label">{{ room.label }}</span>
       </div>
@@ -60,11 +64,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 
 const store = useGameStore()
 const route = useRoute()
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 
 const rooms = [
@@ -90,11 +95,24 @@ const roomLabels = {
 const currentRoomId = computed(() => route.path.replace('/', ''))
 const roomLabel = computed(() => roomLabels[currentRoomId.value] || currentRoomId.value)
 
+const currentRoomIndex = computed(() => rooms.findIndex(r => r.id === currentRoomId.value))
+const nextRoom = computed(() => rooms[currentRoomIndex.value + 1] ?? null)
+
+function goToRoom(room) {
+  router.push('/' + room.id)
+}
+
 // Timer
 const elapsed = ref(0)
 let timerInterval = null
 
 onMounted(() => {
+  // Redirect to landing if no active session
+  if (!store.sessionId) {
+    router.replace('/')
+    return
+  }
+
   timerInterval = setInterval(() => {
     if (store.gameStartTime) {
       elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000)
@@ -147,7 +165,27 @@ const formattedTime = computed(() => {
 
 .topbar-right {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 16px;
+}
+
+.next-room-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  letter-spacing: 0.5px;
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.next-room-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  opacity: 1;
 }
 
 .logo {
@@ -280,7 +318,7 @@ const formattedTime = computed(() => {
   flex-direction: column;
   align-items: center;
   position: relative;
-  cursor: default;
+  cursor: pointer;
 }
 
 .progress-dot::before {

@@ -27,8 +27,10 @@ public class SessionController : ControllerBase
         {
             var generated = await _claude.GenerateSessionAsync();
 
-            var culprit = generated.Employees.FirstOrDefault(e => e.Id == 1001)
-                          ?? new Employee { Id = 1001, Name = generated.CulpritName, Department = generated.CulpritDepartment, Role = generated.CulpritRole };
+            var culprit = generated.Employees.FirstOrDefault(e =>
+                              e.Name.Equals(generated.CulpritName, StringComparison.OrdinalIgnoreCase))
+                          ?? generated.Employees.FirstOrDefault()
+                          ?? new Employee { Name = generated.CulpritName, Department = generated.CulpritDepartment, Role = generated.CulpritRole };
 
             culprit.Name = generated.CulpritName;
             culprit.Department = generated.CulpritDepartment;
