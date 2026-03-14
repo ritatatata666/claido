@@ -90,11 +90,13 @@ const searchTerm = ref('')
 const decodedContent = ref({})
 
 onMounted(async () => {
+  const vaultWord3 = String(store.sessionState?.vaultWord3 || '').toLowerCase()
   try {
     const data = await store.enterRoom('wiki')
-    pages.value = Array.isArray(data) ? data : []
+    pages.value = normalizeWikiPages(Array.isArray(data) ? data : [], vaultWord3)
   } catch (e) {
-    pages.value = getDefaultPages()
+    console.error('Failed to load wiki data:', e)
+    pages.value = getDefaultPages(vaultWord3)
   } finally {
     loading.value = false
     if (pages.value.length > 0) selectedPage.value = pages.value[0]
@@ -142,7 +144,51 @@ function decodeRot13(page) {
   }
 }
 
-function getDefaultPages() {
+function buildImmersiveDecodedNote(vaultWord3, pageTitle = '') {
+  const templates = [
+    `Incident addendum: witness statements were anonymized under codename ${vaultWord3} before board review.`,
+    `Internal errata: archival cross-reference marks ${vaultWord3} as the identity tag used in sealed incident records.`,
+    `Security appendix: operators replaced employee names with token ${vaultWord3} in the restricted transcript.`,
+  ]
+  const titleSeed = [...pageTitle].reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+  return templates[titleSeed % templates.length]
+}
+
+function ensureRedactedContainsVaultWord(page, vaultWord3) {
+  if (!vaultWord3) return page
+  const decoded = rot13(page.redactedSection || '')
+  if (decoded.toLowerCase().includes(vaultWord3)) {
+    return page
+  }
+  const forcedSentence = buildImmersiveDecodedNote(vaultWord3, page?.title)
+  return {
+    ...page,
+    hasRedacted: true,
+    redactedSection: rot13(forcedSentence),
+  }
+}
+
+function normalizeWikiPages(rawPages, vaultWord3) {
+  const basePages = rawPages.map(p => ({ ...p }))
+  if (basePages.length === 0) return getDefaultPages(vaultWord3)
+
+  const redactedIndex = basePages.findIndex(p => p?.hasRedacted)
+  if (redactedIndex >= 0) {
+    basePages[redactedIndex] = ensureRedactedContainsVaultWord(basePages[redactedIndex], vaultWord3)
+    return basePages
+  }
+
+  const fallbackPage = basePages[0]
+  basePages[0] = ensureRedactedContainsVaultWord({
+    ...fallbackPage,
+    hasRedacted: true,
+    redactedSection: '',
+  }, vaultWord3)
+  return basePages
+}
+
+function getDefaultPages(vaultWord3) {
+  const safeWord = vaultWord3 || 'identity'
   return [
     {
       id: 'page-001',
@@ -161,7 +207,7 @@ function getDefaultPages() {
       author: 'Alex Torres',
       content: '## Access Protocol\n\nServer Room B contains critical infrastructure. Access is restricted to Level 4+ clearance.\n\n### After-Hours Access\n\nAll after-hours access must be pre-approved by the CISO.',
       hasRedacted: true,
-      redactedSection: 'Gur inyg pbqr vf cneg bs gur vqragvgl senzrjbex. Gur guveq jbeq vf: vqragvgl',
+      redactedSection: rot13(buildImmersiveDecodedNote(safeWord, 'Server Room Access Protocol')),
     },
     {
       id: 'page-003',
