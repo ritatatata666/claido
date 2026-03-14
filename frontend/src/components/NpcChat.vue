@@ -110,46 +110,67 @@ async function send() {
   font-family: var(--font-mono);
 }
 
-/* Toggle button */
 .npc-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--accent-purple);
+  background: linear-gradient(180deg, rgba(255, 249, 239, 0.98), rgba(238, 225, 204, 0.98));
+  border: 1px solid rgba(90, 65, 42, 0.24);
   color: var(--text-primary);
-  padding: 6px 12px;
-  border-radius: var(--radius);
+  padding: 9px 14px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
   font-family: var(--font-mono);
-  transition: border-color var(--transition), color var(--transition);
+  transition: border-color var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
+  box-shadow: var(--paper-shadow);
+  transform: none;
 }
 
 .npc-toggle:hover {
-  border-color: var(--accent-purple);
+  border-color: rgba(185, 70, 54, 0.4);
   color: var(--text-primary);
-  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .npc-avatar { font-size: 14px; }
 .npc-toggle-name { font-weight: 700; }
 .npc-toggle-role { color: var(--text-muted); font-size: 11px; }
-.toggle-arrow { font-size: 10px; color: var(--text-muted); }
+.toggle-arrow { font-size: 10px; color: var(--accent-red); }
 
-/* Panel pops up above the toggle */
 .npc-panel {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
   width: 340px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(253, 248, 239, 0.98), rgba(237, 225, 206, 0.98));
+  border: 1px solid rgba(90, 65, 42, 0.26);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   max-height: 420px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 38px rgba(55, 35, 19, 0.2);
+  overflow: hidden;
+}
+
+.npc-panel::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 24px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4d78a5;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.24), inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.npc-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 25px, rgba(124, 95, 69, 0.07) 25px 26px);
+  pointer-events: none;
 }
 
 .npc-header {
@@ -157,8 +178,10 @@ async function send() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(90, 65, 42, 0.16);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .npc-info { display: flex; flex-direction: column; gap: 2px; }
@@ -171,7 +194,7 @@ async function send() {
 
 .npc-role-label {
   font-size: 11px;
-  color: var(--accent-purple);
+  color: var(--accent-red);
 }
 
 .npc-close {
@@ -193,6 +216,8 @@ async function send() {
   flex-direction: column;
   gap: 8px;
   min-height: 120px;
+  position: relative;
+  z-index: 1;
 }
 
 .npc-intro {
@@ -208,24 +233,24 @@ async function send() {
 .msg-bubble {
   max-width: 80%;
   padding: 8px 12px;
-  border-radius: var(--radius);
+  border-radius: 8px;
   font-size: 12px;
   line-height: 1.5;
+  box-shadow: 0 6px 14px rgba(75, 51, 30, 0.08);
 }
 
 .msg-user .msg-bubble {
-  background: rgba(31, 111, 235, 0.15);
-  border: 1px solid rgba(31, 111, 235, 0.3);
+  background: rgba(86, 120, 140, 0.14);
+  border: 1px solid rgba(86, 120, 140, 0.24);
   color: var(--text-primary);
 }
 
 .msg-npc .msg-bubble {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 250, 242, 0.85);
+  border: 1px solid rgba(90, 65, 42, 0.15);
   color: var(--text-secondary);
 }
 
-/* Typing dots */
 .npc-typing {
   display: flex;
   gap: 4px;
@@ -236,7 +261,7 @@ async function send() {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--accent-red);
   animation: bounce 1.2s infinite;
 }
 
@@ -248,13 +273,14 @@ async function send() {
   50% { transform: translateY(-4px); opacity: 1; }
 }
 
-/* Input row */
 .npc-input-row {
   display: flex;
   gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid rgba(90, 65, 42, 0.16);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .npc-input {

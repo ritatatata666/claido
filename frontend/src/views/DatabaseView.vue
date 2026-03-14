@@ -2,7 +2,7 @@
   <RoomLayout>
     <div class="db-view">
       <div class="db-sidebar">
-        <div class="sidebar-header">NovaCrime DB</div>
+        <div class="sidebar-header nova-glitch" data-text="NOVACRIME DB">NOVACRIME DB</div>
         <div class="table-list">
           <div
             v-for="t in tables"
