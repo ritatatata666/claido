@@ -145,8 +145,6 @@ async function createTeamRoom() {
   padding: 40px 24px 60px;
   overflow-y: auto;
   position: relative;
-  width: min(1120px, 100%);
-  display: flex;
   flex-direction: column;
   gap: 24px;
 }
