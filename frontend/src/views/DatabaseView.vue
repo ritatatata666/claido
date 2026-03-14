@@ -79,6 +79,7 @@ import { ref, onMounted } from 'vue'
 import RoomLayout from '../components/RoomLayout.vue'
 import NpcChat from '../components/NpcChat.vue'
 import { useGameStore } from '../stores/gameStore.js'
+import wasmUrl from '/sql-wasm.wasm?url'
 
 const store = useGameStore()
 const sqlInput = ref('SELECT * FROM employees;')
@@ -99,7 +100,7 @@ onMounted(async () => {
     // Dynamically load sql.js
     const initSqlJs = (await import('sql.js')).default
     const SQL = await initSqlJs({
-      locateFile: file => `/${file}`,
+      locateFile: () => wasmUrl,
     })
     db.value = new SQL.Database(bytes)
   } catch (e) {
