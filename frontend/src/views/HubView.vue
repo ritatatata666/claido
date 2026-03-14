@@ -27,140 +27,179 @@
       </div>
     </header>
 
-    <!-- Room grid -->
     <main class="hub-main">
-      <div class="section-label">SELECT INVESTIGATION ROOM</div>
-      <div class="room-grid">
-        <div
-          v-for="room in mainRooms"
-          :key="room.id"
-          :class="['room-panel', `room-panel--${room.color}`, { 'room-panel--cleared': getRoomStatus(room.id) === 'CLEARED' }]"
-          @click="enterRoom(room)"
-        >
-          <div class="panel-left-border"></div>
-          <div class="panel-body">
-            <div class="panel-top">
-              <span class="panel-icon">{{ room.icon }}</span>
-              <div class="panel-name-wrap">
-                <div class="panel-name">{{ room.name }}</div>
-                <div class="panel-desc">{{ room.desc }}</div>
-              </div>
-              <div :class="['panel-badge', `badge--${getRoomStatus(room.id).toLowerCase().replace(' ', '-')}`]">
-                {{ getRoomStatus(room.id) }}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="map-intro">
+        <div class="map-intro__label">FIELD GUIDE</div>
+        <p>
+          Welcome to the mansion floor plan. Tap a chamber to move the investigation there; each tile glows brighter as you clear that area.
+        </p>
       </div>
 
-      <!-- Vault row -->
-      <div class="vault-section">
-        <div class="section-label">FINAL OBJECTIVE</div>
-        <div
-          class="room-panel room-panel--vault"
-          @click="enterRoom(vaultRoom)"
-        >
-          <div class="panel-left-border"></div>
-          <div class="panel-body">
-            <div class="panel-top">
-              <span class="panel-icon">{{ vaultRoom.icon }}</span>
-              <div class="panel-name-wrap">
-                <div class="panel-name">{{ vaultRoom.name }}</div>
-                <div class="panel-desc">{{ vaultRoom.desc }}</div>
-              </div>
-              <div class="vault-clues-hint">
-                {{ store.discoveredClues.length }} / 4 clues collected
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MansionMap
+        :rooms="mansionRooms"
+        :active-room="activeRoom"
+        @room-select="handleRoomSelect"
+      />
     </main>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import MansionMap from '../components/MansionMap.vue'
 import { useGameStore } from '../stores/gameStore.js'
 
 const router = useRouter()
+const route = useRoute()
 const store = useGameStore()
 
-const mainRooms = [
+const roomBlueprints = [
   {
-    id: 'shell',
-    name: 'NovaShell',
-    icon: '>_',
-    desc: 'Explore the internal filesystem and decode hidden secrets',
-    route: '/shell',
-    color: 'green',
+    id: 'hall',
+    area: 'hall',
+    roomName: 'Hall',
+    theme: 'gold',
+    route: '/hub',
+    alias: null,
+    desc: 'Central corridor and foyer',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1502673530728-f79b4cab31b1?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Main Gateway',
   },
   {
-    id: 'database',
-    name: 'NovaCrime DB',
-    icon: '⬡',
-    desc: 'Query employee records and access logs via SQL',
+    id: 'kitchen',
+    area: 'kitchen',
+    roomName: 'Kitchen',
+    theme: 'green',
     route: '/database',
-    color: 'blue',
+    alias: 'database',
+    desc: 'Messy notes, receipts and delivered packages',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Database',
   },
   {
-    id: 'mail',
-    name: 'NovaMail',
-    icon: '✉',
-    desc: 'Read intercepted corporate emails for suspicious activity',
-    route: '/mail',
-    color: 'cyan',
-  },
-  {
-    id: 'wiki',
-    name: 'NovaWiki',
-    icon: '◈',
-    desc: 'Browse classified internal documents and decode redacted sections',
+    id: 'ballroom',
+    area: 'ballroom',
+    roomName: 'Ballroom',
+    theme: 'gold',
     route: '/wiki',
-    color: 'yellow',
+    alias: 'wiki',
+    desc: 'Dark ballroom with broken chandeliers',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Wiki',
   },
   {
-    id: 'search',
-    name: 'NovaSearch',
-    icon: '⊕',
-    desc: 'Analyse 50,000 system log entries for anomalies',
-    route: '/search',
-    color: 'teal',
+    id: 'dining',
+    area: 'dining',
+    roomName: 'Dining Room',
+    theme: 'brown',
+    route: '/mail',
+    alias: 'mail',
+    desc: 'Long table of patterns — query the records for clue feasts',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Mail',
   },
   {
-    id: 'onion',
-    name: 'The Onion',
-    icon: '⊗',
-    desc: 'Browse dark web channels for leaked intelligence',
+    id: 'conservatory',
+    area: 'conservatory',
+    roomName: 'Conservatory',
+    theme: 'green',
     route: '/onion',
-    color: 'purple',
+    alias: 'onion',
+    desc: 'Overgrown greenhouse full of moonlit leaves',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Onion',
+  },
+  {
+    id: 'billiard',
+    area: 'billiard',
+    roomName: 'Billiard Room',
+    theme: 'brown',
+    route: '/vault',
+    alias: 'vault',
+    desc: 'Patterned pool tables and statistical break shots',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=900&q=80',
+    challengeTitle: 'Vault',
+  },
+  {
+    id: 'library',
+    area: 'library',
+    roomName: 'Library',
+    theme: 'brown',
+    route: '/search',
+    alias: 'search',
+    desc: 'Gothic shelves and candlelight',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1511993226950-233b77a4cb4d?auto=format&fit=crop&w=1000&q=80',
+    challengeTitle: 'Search',
+  },
+  {
+    id: 'lounge',
+    area: 'lounge',
+    roomName: 'Lounge',
+    theme: 'gold',
+    route: '/mail',
+    alias: 'mail',
+    desc: 'Dim fireside planning room',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Mail',
+  },
+  {
+    id: 'study',
+    area: 'study',
+    roomName: 'Study',
+    theme: 'green',
+    route: '/shell',
+    alias: 'shell',
+    desc: 'Detective desk with scattered case files',
+    backgroundImage:
+      'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=1200&q=80',
+    challengeTitle: 'Shell',
   },
 ]
 
-const vaultRoom = {
-  id: 'vault',
-  name: 'Vault',
-  icon: '🔒',
-  desc: 'Enter the four-word passphrase to complete the investigation',
-  route: '/vault',
-}
-
 function getRoomStatus(roomId) {
+  if (!roomId) return 'ACTIVE'
   if (store.completedRooms.includes(roomId)) return 'CLEARED'
   if (store.roomCache[roomId]) return 'IN PROGRESS'
   return 'ACTIVE'
 }
 
-function enterRoom(room) {
-  router.push(room.route)
-}
-
-const clearedCount = computed(() =>
-  mainRooms.filter(r => store.completedRooms.includes(r.id)).length
+const mansionRooms = computed(() =>
+  roomBlueprints.map(room => ({
+    ...room,
+    status: getRoomStatus(room.alias ?? room.id),
+  }))
 )
 
-const progressPercent = computed(() => Math.round((clearedCount.value / 6) * 100))
+const progressPercent = computed(() => {
+  const completed = store.completedRooms.length
+  return Math.round((completed / 6) * 100)
+})
+
+const clearedCount = computed(() => store.completedRooms.length)
+
+const activeRoom = computed(() => {
+  const match = roomBlueprints.find((room) => room.route === route.path)
+  return match?.id ?? 'hall'
+})
+
+function handleRoomSelect(roomId) {
+  const selection = roomBlueprints.find((room) => room.id === roomId)
+  if (!selection) return
+  if (selection.route === '/hub') {
+    router.push('/hub')
+    return
+  }
+  router.push(selection.route)
+}
 
 // Timer
 const elapsed = ref(0)
@@ -191,10 +230,9 @@ const formattedTime = computed(() => {
 </script>
 
 <style scoped>
-/* ── Base ─────────────────────────────────────────────── */
 .hub {
   min-height: 100vh;
-  background: #0a0a0f;
+  background: #03040a;
   display: flex;
   flex-direction: column;
   font-family: 'Courier New', Courier, monospace;
@@ -216,7 +254,6 @@ const formattedTime = computed(() => {
   );
 }
 
-/* ── Topbar ───────────────────────────────────────────── */
 .hub-topbar {
   position: relative;
   z-index: 1;
@@ -226,7 +263,7 @@ const formattedTime = computed(() => {
   padding: 0 28px;
   height: 64px;
   background: #0d0d14;
-  border-bottom: 1px solid #1e2030;
+  border-bottom: 1px solid #111320;
   gap: 24px;
 }
 
@@ -273,7 +310,7 @@ const formattedTime = computed(() => {
 .progress-bar-wrap {
   width: 100%;
   height: 4px;
-  background: #1a1a28;
+  background: #11131f;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -337,7 +374,6 @@ const formattedTime = computed(() => {
   text-shadow: 0 0 8px rgba(224, 160, 32, 0.4);
 }
 
-/* ── Main content ─────────────────────────────────────── */
 .hub-main {
   position: relative;
   z-index: 1;
@@ -346,206 +382,53 @@ const formattedTime = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 }
 
-.section-label {
+.map-intro {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 20px 24px;
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.map-intro__label {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  color: #2a3040;
+  letter-spacing: 4px;
   text-transform: uppercase;
-  margin-bottom: 4px;
+  color: #6cf3ff;
+  margin-bottom: 6px;
 }
 
-/* ── Room grid ────────────────────────────────────────── */
-.room-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+.map-intro p {
+  margin: 0;
+  font-size: 14px;
+  color: #c8c9d6;
+  line-height: 1.6;
 }
 
-@media (max-width: 700px) {
-  .room-grid {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 900px) {
   .hub-topbar {
     grid-template-columns: 1fr;
     height: auto;
-    padding: 12px 16px;
+    padding: 12px 20px;
     gap: 12px;
   }
+
   .hub-timer {
     align-items: flex-start;
   }
+
+  .hub-main {
+    padding: 24px 20px 32px;
+  }
 }
-
-/* ── Room panel ───────────────────────────────────────── */
-.room-panel {
-  display: flex;
-  align-items: stretch;
-  background: #0f0f18;
-  border: 1px solid #1a1a28;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
-  overflow: hidden;
-  position: relative;
-}
-
-.room-panel:hover {
-  background: #13131e;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-}
-
-.panel-left-border {
-  width: 4px;
-  flex-shrink: 0;
-  background: #2a2a40;
-  transition: background 0.18s;
-}
-
-/* Color variants */
-.room-panel--green .panel-left-border   { background: #00cc44; }
-.room-panel--blue .panel-left-border    { background: #1f6feb; }
-.room-panel--cyan .panel-left-border    { background: #0dbfb8; }
-.room-panel--yellow .panel-left-border  { background: #d4a017; }
-.room-panel--teal .panel-left-border    { background: #00bfb3; }
-.room-panel--purple .panel-left-border  { background: #8b5cf6; }
-
-.room-panel--green:hover  { border-color: #00cc44; box-shadow: 0 4px 20px rgba(0, 204, 68, 0.15); }
-.room-panel--blue:hover   { border-color: #1f6feb; box-shadow: 0 4px 20px rgba(31, 111, 235, 0.15); }
-.room-panel--cyan:hover   { border-color: #0dbfb8; box-shadow: 0 4px 20px rgba(13, 191, 184, 0.15); }
-.room-panel--yellow:hover { border-color: #d4a017; box-shadow: 0 4px 20px rgba(212, 160, 23, 0.15); }
-.room-panel--teal:hover   { border-color: #00bfb3; box-shadow: 0 4px 20px rgba(0, 191, 179, 0.15); }
-.room-panel--purple:hover { border-color: #8b5cf6; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15); }
-
-/* Cleared state */
-.room-panel--cleared {
-  opacity: 0.65;
-}
-
-.room-panel--cleared .panel-left-border {
-  background: #3fb950 !important;
-}
-
-/* Panel body */
-.panel-body {
-  flex: 1;
-  padding: 16px 18px;
-}
-
-.panel-top {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.panel-icon {
-  font-size: 22px;
-  flex-shrink: 0;
-  width: 32px;
-  text-align: center;
-  font-family: 'Courier New', monospace;
-  color: #7a8090;
-}
-
-.room-panel--green .panel-icon   { color: #00cc44; }
-.room-panel--blue .panel-icon    { color: #1f6feb; }
-.room-panel--cyan .panel-icon    { color: #0dbfb8; }
-.room-panel--yellow .panel-icon  { color: #d4a017; }
-.room-panel--teal .panel-icon    { color: #00bfb3; }
-.room-panel--purple .panel-icon  { color: #8b5cf6; }
-
-.panel-name-wrap {
-  flex: 1;
-  min-width: 0;
-}
-
-.panel-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #c8d0dc;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  margin-bottom: 3px;
-}
-
-.panel-desc {
-  font-size: 11px;
-  color: #4a5060;
-  line-height: 1.45;
-}
-
-/* Status badges */
-.panel-badge {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 2px;
-  border: 1px solid;
-}
-
-.badge--active {
-  color: #3fb950;
-  border-color: #3fb950;
-  background: rgba(63, 185, 80, 0.08);
-}
-
-.badge--in-progress {
-  color: #e0a020;
-  border-color: #e0a020;
-  background: rgba(224, 160, 32, 0.08);
-}
-
-.badge--cleared {
-  color: #58b0ff;
-  border-color: #58b0ff;
-  background: rgba(88, 176, 255, 0.08);
-}
-
-/* ── Vault section ────────────────────────────────────── */
-.vault-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.room-panel--vault {
-  background: #100e08;
-  border-color: #2a2010;
-}
-
-.room-panel--vault .panel-left-border {
-  background: linear-gradient(180deg, #d4a017, #a07010);
-}
-
-.room-panel--vault:hover {
-  background: #141008;
-  border-color: #d4a017;
-  box-shadow: 0 4px 24px rgba(212, 160, 23, 0.2);
-}
-
-.room-panel--vault .panel-icon {
-  color: #d4a017;
-  font-size: 24px;
-}
-
-.room-panel--vault .panel-name {
-  color: #e0b840;
-}
-
-.vault-clues-hint {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: #8a7030;
-  font-weight: 600;
-  text-align: right;
-  white-space: nowrap;
+@media (max-width: 640px) {
+  .map-intro {
+    padding: 16px 18px;
+  }
 }
 </style>

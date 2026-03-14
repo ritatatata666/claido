@@ -1,5 +1,5 @@
 <template>
-  <div class="room-layout">
+  <div :class="['room-layout', 'challenge-page', currentRoomClass]">
     <!-- Room cleared overlay -->
     <Transition name="cleared-fade">
       <div v-if="showClearedOverlay" class="cleared-overlay">
@@ -101,6 +101,7 @@ const roomLabels = {
 }
 
 const currentRoomId = computed(() => route.path.replace('/', ''))
+const currentRoomClass = computed(() => `room--${currentRoomId.value}`)
 const roomLabel = computed(() => roomLabels[currentRoomId.value] || currentRoomId.value)
 
 // Watch for room completion to trigger overlay then navigate to hub
@@ -156,6 +157,42 @@ const formattedTime = computed(() => {
   height: 100vh;
   background: var(--bg-primary);
   overflow: hidden;
+}
+
+.challenge-page {
+  background: #121212;
+  color: #f5f5f5;
+}
+
+.challenge-page .room-main {
+  background: rgba(18, 18, 18, 0.85);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.challenge-page button {
+  background: #c9a24a;
+  color: #050505;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border: none;
+  box-shadow: none;
+}
+
+.challenge-page .hub-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f9f8f6;
+}
+
+.challenge-page .clue-sidebar {
+  background: #1e1e1e;
+  border-left-color: rgba(255, 255, 255, 0.08);
+}
+
+.challenge-page .clue-item {
+  background: #212121;
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .topbar {
@@ -387,4 +424,24 @@ const formattedTime = computed(() => {
 
 .progress-dot.active .dot-label { color: var(--text-secondary); }
 .progress-dot.done .dot-label { color: var(--accent-green); }
+
+/* Per-room theming: apply subtle horror / escape-room vibes */
+.room-layout.room--wiki { background: radial-gradient(ellipse at 20% 10%, rgba(40,30,20,0.35), rgba(5,5,10,0.95)); }
+.room-layout.room--shell { background: linear-gradient(180deg,#07080a,#0f0f12); }
+.room-layout.room--mail { background: linear-gradient(180deg,#11120f,#0b0b0b); }
+.room-layout.room--database { background: linear-gradient(180deg,#071018,#0b1518); }
+.room-layout.room--search { background: linear-gradient(180deg,#0b1210,#071018); }
+.room-layout.room--onion { background: linear-gradient(180deg,#050306,#08040a); color:#cfcbd1; }
+
+.room-layout.room--wiki .topbar { box-shadow: inset 0 -6px 40px rgba(0,0,0,0.6); }
+.room-layout.room--wiki .room-name { color: #e8dccf; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+
+.room-layout.room--shell .topbar { background: rgba(5,5,8,0.9); }
+.room-layout.room--shell .hub-btn { border-color: rgba(80,160,220,0.12); }
+
+/* Slight film grain overlay for horror effect */
+.room-layout::after {
+  content: ''; pointer-events: none; position: absolute; inset:0; background-image: linear-gradient(transparent 50%, rgba(0,0,0,0.02) 50%); mix-blend-mode: overlay; opacity:0.6; z-index:2;
+}
+
 </style>

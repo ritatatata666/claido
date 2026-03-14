@@ -100,9 +100,9 @@ async function sendMessage() {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f5f5f5;
   padding: 6px 12px;
   border-radius: var(--radius);
   cursor: pointer;
@@ -111,7 +111,7 @@ async function sendMessage() {
   transition: border-color var(--transition);
 }
 
-.npc-toggle:hover { border-color: var(--accent-purple); color: var(--text-primary); }
+.npc-toggle:hover { border-color: #c9a24a; color: #fff9d4; }
 
 .npc-avatar { font-size: 14px; }
 
@@ -129,8 +129,8 @@ async function sendMessage() {
   bottom: calc(100% + 8px);
   left: 0;
   width: 320px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -143,14 +143,14 @@ async function sendMessage() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .npc-info { display: flex; flex-direction: column; gap: 2px; }
 
-.npc-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.npc-name { font-size: 13px; font-weight: 700; color: #fff8e5; }
 
-.npc-role-label { font-size: 11px; color: var(--accent-purple); }
+.npc-role-label { font-size: 11px; color: #c9a24a; }
 
 .npc-close {
   background: transparent;
@@ -189,15 +189,15 @@ async function sendMessage() {
 }
 
 .msg-user .msg-bubble {
-  background: rgba(31, 111, 235, 0.15);
-  border: 1px solid rgba(31, 111, 235, 0.3);
-  color: var(--text-primary);
+  background: #3a3a3a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 .msg-npc .msg-bubble {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f0f0f0;
 }
 
 .npc-typing {
@@ -226,7 +226,9 @@ async function sendMessage() {
   display: flex;
   gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: #121212;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .npc-input {
@@ -234,28 +236,28 @@ async function sendMessage() {
   font-family: var(--font-mono);
   font-size: 12px;
   padding: 6px 10px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
+  background: #1b1b1b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);
-  color: var(--text-primary);
+  color: #f5f5f5;
   outline: none;
 }
 
-.npc-input:focus { border-color: var(--accent-purple); }
+.npc-input:focus { border-color: #c9a24a; }
 
 .npc-send {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid var(--accent-purple);
-  color: var(--accent-purple);
+  background: #c9a24a;
+  border: 1px solid #c9a24a;
+  color: #050505;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: transform 0.15s;
 }
 
-.npc-send:hover:not(:disabled) { background: rgba(139, 92, 246, 0.25); }
-.npc-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.npc-send:hover:not(:disabled) { transform: scale(1.02); }
+.npc-send:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

@@ -19,6 +19,15 @@ const routes = [
   { path: '/search', component: SearchView },
   { path: '/onion', component: OnionView },
   { path: '/vault', component: VaultView },
+  { path: '/challenge/kitchen', component: MailView },
+  { path: '/challenge/ballroom', component: ShellView },
+  { path: '/challenge/conservatory', component: SearchView },
+  { path: '/challenge/dining-room', component: DatabaseView },
+  { path: '/challenge/billiard-room', component: DatabaseView },
+  { path: '/challenge/library', component: WikiView },
+  { path: '/challenge/lounge', component: MailView },
+  { path: '/challenge/hall', component: HubView },
+  { path: '/challenge/study', component: OnionView },
 ]
 
 export default createRouter({
