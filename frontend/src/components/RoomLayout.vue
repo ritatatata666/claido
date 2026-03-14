@@ -51,6 +51,7 @@
           done: store.isRoomComplete(room.id)
         }]"
         :title="room.label"
+        @click="router.push('/' + room.id)"
       >
         <span class="dot-label">{{ room.label }}</span>
       </div>
@@ -60,11 +61,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 
 const store = useGameStore()
 const route = useRoute()
+const router = useRouter()
 const sidebarCollapsed = ref(false)
 
 const rooms = [
@@ -280,7 +282,7 @@ const formattedTime = computed(() => {
   flex-direction: column;
   align-items: center;
   position: relative;
-  cursor: default;
+  cursor: pointer;
 }
 
 .progress-dot::before {
