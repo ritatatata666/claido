@@ -1,12 +1,15 @@
 <template>
-  <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding }">
-    <!-- Blood Splatter Effects -->
-    <div class="blood-splatter-global blood-splatter-global--1" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
-    <div class="blood-splatter-global blood-splatter-global--2" aria-hidden="true"><img :src="bloodSplatter2" alt="" /></div>
-    <div class="blood-splatter-global blood-splatter-global--3" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
-    <div class="blood-splatter-global blood-splatter-global--4" aria-hidden="true"><img :src="bloodSplatter2" alt="" /></div>
-    <div class="blood-splatter-global blood-splatter-global--5" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
+  <Teleport to="body">
+    <div v-if="showSplatters" class="blood-splatter-container" aria-hidden="true">
+      <div class="blood-splatter-global blood-splatter-global--1"><img :src="bloodSplatter1" alt="" /></div>
+      <div class="blood-splatter-global blood-splatter-global--2"><img :src="bloodSplatter2" alt="" /></div>
+      <div class="blood-splatter-global blood-splatter-global--3"><img :src="bloodSplatter1" alt="" /></div>
+      <div class="blood-splatter-global blood-splatter-global--4"><img :src="bloodSplatter2" alt="" /></div>
+      <div class="blood-splatter-global blood-splatter-global--5"><img :src="bloodSplatter1" alt="" /></div>
+    </div>
+  </Teleport>
 
+  <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding }">
     <div class="app-shell__board" aria-hidden="true">
       <span class="thread thread--one"></span>
       <span class="thread thread--two"></span>
@@ -33,6 +36,7 @@ import bloodSplatter2 from '../images/bloodSplatter2.png'
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
 const isLanding = computed(() => route.path === '/')
+const showSplatters = computed(() => isHub.value || isLanding.value)
 </script>
 
 <style scoped>
