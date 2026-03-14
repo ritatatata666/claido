@@ -40,7 +40,9 @@ const HINTS = [
 
 onMounted(async () => {
   // Restore shell history from store
-  commandHistory.value = [...(store.shellHistory || [])]
+  const restoredHistory = Array.isArray(store.shellHistory) ? store.shellHistory : []
+  commandHistory.value = [...restoredHistory]
+  historyIndex = commandHistory.value.length
 
   // Load room content
   try {
@@ -76,21 +78,20 @@ onMounted(async () => {
   resizeObserver.observe(containerEl.value)
 
   // Welcome message
-  term.writeln('\x1b[32m╔══════════════════════════════════════════════════╗\x1b[0m')
-  term.writeln('\x1b[32m║          NovaCorp Internal Shell v3.1.4          ║\x1b[0m')
-  term.writeln('\x1b[32m║     AUTHORISED ACCESS ONLY — ALL ACTIVITY LOGGED ║\x1b[0m')
-  term.writeln('\x1b[32m╚══════════════════════════════════════════════════╝\x1b[0m')
-  term.writeln('')
-  term.writeln('\x1b[33mType "help" for available commands.\x1b[0m')
-  term.writeln('')
-
+  writelnTerminal('\x1b[32m╔══════════════════════════════════════════════════╗\x1b[0m')
+  writelnTerminal('\x1b[32m║          NovaCorp Internal Shell v3.1.4          ║\x1b[0m')
+  writelnTerminal('\x1b[32m║     AUTHORISED ACCESS ONLY — ALL ACTIVITY LOGGED ║\x1b[0m')
+  writelnTerminal('\x1b[32m╚══════════════════════════════════════════════════╝\x1b[0m')
+  writelnTerminal('')
+  writelnTerminal('\x1b[33mType "help" for available commands.\x1b[0m')
+  writelnTerminal('')
   prompt()
 
   term.onData(data => {
     if (data === '\r') {
       // Enter
       const cmd = inputBuffer.trim()
-      term.writeln('')
+      writelnTerminal('')
       if (cmd) {
         commandHistory.value.push(cmd)
         historyIndex = commandHistory.value.length
@@ -103,11 +104,11 @@ onMounted(async () => {
       // Backspace
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
-        term.write('\b \b')
+        writeTerminal('\b \b')
       }
     } else if (data === '\x03') {
       // Ctrl+C
-      term.writeln('^C')
+      writelnTerminal('^C')
       inputBuffer = ''
       historyIndex = commandHistory.value.length
       prompt()
@@ -118,7 +119,7 @@ onMounted(async () => {
       const prev = commandHistory.value[historyIndex] ?? ''
       clearCurrentInput()
       inputBuffer = prev
-      term.write(prev)
+      writeTerminal(prev)
     } else if (data === '\x1b[B') {
       // Down arrow — next command
       if (historyIndex < commandHistory.value.length - 1) {
@@ -126,7 +127,7 @@ onMounted(async () => {
         const next = commandHistory.value[historyIndex] ?? ''
         clearCurrentInput()
         inputBuffer = next
-        term.write(next)
+        writeTerminal(next)
       } else {
         historyIndex = commandHistory.value.length
         clearCurrentInput()
@@ -137,7 +138,7 @@ onMounted(async () => {
     } else if (data >= ' ' || data === '\t') {
       // Printable chars — also handles paste (multi-char data)
       inputBuffer += data
-      term.write(data)
+      writeTerminal(data)
       historyIndex = commandHistory.value.length
     }
   })
@@ -150,7 +151,7 @@ onUnmounted(() => {
 
 function clearCurrentInput() {
   // Erase current input from terminal display
-  term.write('\b \b'.repeat(inputBuffer.length))
+  writeTerminal('\b \b'.repeat(inputBuffer.length))
   inputBuffer = ''
 }
 
@@ -158,7 +159,15 @@ function prompt() {
   const user = filesystem?.username || 'analyst'
   const host = filesystem?.hostname || 'novacorp-srv-01'
   const shortCwd = cwd.replace(`/home/${user}`, '~')
-  term.write(`\x1b[32m${user}@${host}\x1b[0m:\x1b[34m${shortCwd}\x1b[0m$ `)
+  writeTerminal(`\x1b[32m${user}@${host}\x1b[0m:\x1b[34m${shortCwd}\x1b[0m$ `)
+}
+
+function writeTerminal(data) {
+  term.write(data)
+}
+
+function writelnTerminal(data = '') {
+  term.writeln(data)
 }
 
 function handleCommand(cmd) {
@@ -168,16 +177,16 @@ function handleCommand(cmd) {
 
   switch (prog) {
     case 'help':
-      term.writeln('Available commands: ls, cat, cd, pwd, whoami, echo, env, ps, grep, find, mkdir, touch, rm, uname, hostname, date, history, sudo, chmod, man, base64, hint, clear, help')
-      term.writeln('')
+      writelnTerminal('Available commands: ls, cat, cd, pwd, whoami, echo, env, ps, grep, find, mkdir, touch, rm, uname, hostname, date, history, sudo, chmod, man, base64, hint, clear, help')
+      writelnTerminal('')
       break
 
     case 'pwd':
-      term.writeln(cwd)
+      writelnTerminal(cwd)
       break
 
     case 'whoami':
-      term.writeln(filesystem?.username || 'analyst')
+      writelnTerminal(filesystem?.username || 'analyst')
       break
 
     case 'clear':
@@ -197,41 +206,41 @@ function handleCommand(cmd) {
       break
 
     case 'echo':
-      term.writeln(args.join(' '))
+      writelnTerminal(args.join(' '))
       break
 
     case 'uname':
-      term.writeln(args.includes('-a')
+      writelnTerminal(args.includes('-a')
         ? 'Linux novacorp-srv-01 5.15.0-91-generic #101-Ubuntu SMP x86_64 GNU/Linux'
         : 'Linux')
       break
 
     case 'hostname':
-      term.writeln(filesystem?.hostname || 'novacorp-srv-01')
+      writelnTerminal(filesystem?.hostname || 'novacorp-srv-01')
       break
 
     case 'date':
-      term.writeln(new Date().toString())
+      writelnTerminal(new Date().toString())
       break
 
     case 'env':
-      term.writeln('PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')
-      term.writeln(`USER=${filesystem?.username || 'analyst'}`)
-      term.writeln(`HOME=/home/${filesystem?.username || 'analyst'}`)
-      term.writeln(`SHELL=/bin/bash`)
-      term.writeln(`TERM=xterm-256color`)
-      term.writeln(`LANG=en_AU.UTF-8`)
+      writelnTerminal('PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')
+      writelnTerminal(`USER=${filesystem?.username || 'analyst'}`)
+      writelnTerminal(`HOME=/home/${filesystem?.username || 'analyst'}`)
+      writelnTerminal(`SHELL=/bin/bash`)
+      writelnTerminal(`TERM=xterm-256color`)
+      writelnTerminal(`LANG=en_AU.UTF-8`)
       break
 
     case 'ps':
-      term.writeln('  PID TTY          TIME CMD')
-      term.writeln(' 1337 pts/0    00:00:00 bash')
-      term.writeln(' 1342 pts/0    00:00:00 ps')
+      writelnTerminal('  PID TTY          TIME CMD')
+      writelnTerminal(' 1337 pts/0    00:00:00 bash')
+      writelnTerminal(' 1342 pts/0    00:00:00 ps')
       break
 
     case 'history':
-      ;['ls', 'cd /home/analyst', 'cat readme.txt', 'ls logs/', 'cat logs/access.log', 'cat .env', 'cd ..', 'grep -r "vault" .'].forEach((h, i) => {
-        term.writeln(`  ${String(i + 1).padStart(3)}  ${h}`)
+      commandHistory.value.forEach((h, i) => {
+        writelnTerminal(`  ${String(i + 1).padStart(3)}  ${h}`)
       })
       break
 
@@ -244,19 +253,19 @@ function handleCommand(cmd) {
       break
 
     case 'sudo':
-      term.writeln(`\x1b[31m[sudo] password for ${filesystem?.username || 'analyst'}: `)
-      term.writeln(`\x1b[31m${filesystem?.username || 'analyst'} is not in the sudoers file. This incident will be reported.\x1b[0m`)
+      writelnTerminal(`\x1b[31m[sudo] password for ${filesystem?.username || 'analyst'}: `)
+      writelnTerminal(`\x1b[31m${filesystem?.username || 'analyst'} is not in the sudoers file. This incident will be reported.\x1b[0m`)
       break
 
     case 'chmod':
     case 'mkdir':
     case 'touch':
     case 'rm':
-      term.writeln(`\x1b[33mOperation not permitted on forensic read-only mount.\x1b[0m`)
+      writelnTerminal(`\x1b[33mOperation not permitted on forensic read-only mount.\x1b[0m`)
       break
 
     case 'man':
-      term.writeln(`No manual entry for ${args[0] || prog}`)
+      writelnTerminal(`No manual entry for ${args[0] || prog}`)
       break
 
     case 'base64':
@@ -271,7 +280,7 @@ function handleCommand(cmd) {
     case 'scp':
     case 'curl':
     case 'wget':
-      term.writeln(`\x1b[31mNetwork access disabled on this terminal.\x1b[0m`)
+      writelnTerminal(`\x1b[31mNetwork access disabled on this terminal.\x1b[0m`)
       break
 
     case 'python':
@@ -279,16 +288,16 @@ function handleCommand(cmd) {
     case 'node':
     case 'perl':
     case 'ruby':
-      term.writeln(`\x1b[31mInterpreter execution blocked by security policy.\x1b[0m`)
+      writelnTerminal(`\x1b[31mInterpreter execution blocked by security policy.\x1b[0m`)
       break
 
     case 'exit':
     case 'logout':
-      term.writeln('Session cannot be terminated during active investigation.')
+      writelnTerminal('Session cannot be terminated during active investigation.')
       break
 
     default:
-      term.writeln(`\x1b[31mbash: ${prog}: command not found\x1b[0m`)
+      writelnTerminal(`\x1b[31mbash: ${prog}: command not found\x1b[0m`)
   }
 }
 
@@ -333,7 +342,7 @@ function cmdLs(rawArgs) {
   })
 
   if (children.length === 0) {
-    term.writeln(`ls: cannot access '${pathArg || path}': No such file or directory`)
+    writelnTerminal(`ls: cannot access '${pathArg || path}': No such file or directory`)
     return
   }
 
@@ -344,7 +353,7 @@ function cmdLs(rawArgs) {
     c.name.startsWith('.') ? `\x1b[90m${c.name}\x1b[0m` : c.name
   )
 
-  term.writeln([...dirNames, ...fileNames].join('  '))
+  writelnTerminal([...dirNames, ...fileNames].join('  '))
 }
 
 function cmdCd(arg) {
@@ -357,13 +366,13 @@ function cmdCd(arg) {
   if (dirs.includes(target)) {
     cwd = target
   } else {
-    term.writeln(`cd: ${arg}: No such file or directory`)
+    writelnTerminal(`cd: ${arg}: No such file or directory`)
   }
 }
 
 function cmdCat(arg) {
   if (!arg) {
-    term.writeln('cat: missing operand')
+    writelnTerminal('cat: missing operand')
     return
   }
   const path = resolvePath(arg)
@@ -377,12 +386,12 @@ function cmdCat(arg) {
     if (match) content = match[1]
   }
   if (content === undefined) {
-    term.writeln(`\x1b[31mcat: ${arg}: No such file or directory\x1b[0m`)
+    writelnTerminal(`\x1b[31mcat: ${arg}: No such file or directory\x1b[0m`)
     return
   }
 
   // Print raw file content without any decoding
-  content.split('\n').forEach(line => term.writeln(line))
+  content.split('\n').forEach(line => writelnTerminal(line))
 
   // Check for suspicious access log clue
   if (path.endsWith('access.log')) {
@@ -396,23 +405,23 @@ function cmdCat(arg) {
     }
   }
 
-  term.writeln('')
+  writelnTerminal('')
 }
 
 function cmdBase64(args) {
   const flagIdx = args.indexOf('-d')
   if (flagIdx < 0) {
-    term.writeln('Usage: base64 -d <value>')
+    writelnTerminal('Usage: base64 -d <value>')
     return
   }
   const value = args.find((a, i) => i !== flagIdx)
   if (!value) {
-    term.writeln('base64: missing operand')
+    writelnTerminal('base64: missing operand')
     return
   }
   try {
     const decoded = atob(value)
-    term.writeln(decoded)
+    writelnTerminal(decoded)
     // Check if the decoded value matches the session vault word
     const expected = store.sessionState?.vaultWord1
     if (expected && decoded === expected) {
@@ -424,24 +433,24 @@ function cmdBase64(args) {
       store.markRoomComplete('shell')
     }
   } catch (e) {
-    term.writeln(`\x1b[31mbase64: invalid input — not valid base64\x1b[0m`)
+    writelnTerminal(`\x1b[31mbase64: invalid input — not valid base64\x1b[0m`)
   }
 }
 
 function cmdHint() {
   const MAX_HINTS = 3
   if (hintsUsed.value >= MAX_HINTS) {
-    term.writeln('\x1b[33mNo hints remaining.\x1b[0m')
+    writelnTerminal('\x1b[33mNo hints remaining.\x1b[0m')
     return
   }
   const hint = HINTS[hintsUsed.value]
   hintsUsed.value++
-  term.writeln(`\x1b[33m[HINT ${hintsUsed.value}/${MAX_HINTS}]\x1b[0m ${hint}`)
+  writelnTerminal(`\x1b[33m[HINT ${hintsUsed.value}/${MAX_HINTS}]\x1b[0m ${hint}`)
 }
 
 function cmdGrep(args) {
   if (args.length < 2) {
-    term.writeln('Usage: grep [pattern] [file]')
+    writelnTerminal('Usage: grep [pattern] [file]')
     return
   }
   const pattern = args[0]
@@ -449,7 +458,7 @@ function cmdGrep(args) {
   const files = filesystem?.files || {}
   const content = files[filePath]
   if (!content) {
-    term.writeln(`grep: ${args[args.length - 1]}: No such file or directory`)
+    writelnTerminal(`grep: ${args[args.length - 1]}: No such file or directory`)
     return
   }
   const regex = new RegExp(pattern, 'i')
@@ -457,7 +466,7 @@ function cmdGrep(args) {
   if (matches.length === 0) {
     return
   }
-  matches.forEach(l => term.writeln(l.replace(regex, m => `\x1b[31m${m}\x1b[0m`)))
+  matches.forEach(l => writelnTerminal(l.replace(regex, m => `\x1b[31m${m}\x1b[0m`)))
 }
 
 function cmdFind(args) {
@@ -475,10 +484,10 @@ function cmdFind(args) {
     return new RegExp(glob).test(p.split('/').pop())
   })
   if (results.length === 0) {
-    term.writeln(`find: nothing found`)
+    writelnTerminal(`find: nothing found`)
     return
   }
-  results.forEach(r => term.writeln(r))
+  results.forEach(r => writelnTerminal(r))
 }
 
 function normalizeFilesystem(data) {
