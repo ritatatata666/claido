@@ -1,63 +1,82 @@
 <template>
   <div class="landing">
-    <div class="scanlines"></div>
+    <div class="landing-board">
+      <span class="board-thread board-thread--one"></span>
+      <span class="board-thread board-thread--two"></span>
+      <span class="board-thread board-thread--three"></span>
 
-    <div class="landing-inner">
-      <!-- Top bar -->
-      <div class="top-bar">
-        <span class="classified-badge">● CLASSIFIED</span>
+      <div class="top-bar evidence-strip">
+        <span class="classified-badge">● Active Case</span>
         <span class="case-file">CASE FILE #NC-2025-0303</span>
       </div>
 
-      <!-- Glitchy heading -->
-      <div class="hero-block">
-        <h1 class="claido-heading" data-text="CLAIDO">CLAIDO</h1>
-        <p class="hero-subtitle">NovaCorp Internal Breach — Investigator Access Only</p>
-      </div>
-
-      <!-- Briefing card styled as classified document -->
-      <div class="briefing-card">
-        <div class="watermark">TOP SECRET</div>
-        <div class="card-inner">
-          <div class="card-header">
-            <div class="card-title-block">
-              <span class="card-stamp-label">INCIDENT REPORT</span>
-              <span class="card-date">2025-03-03</span>
-            </div>
-          </div>
-          <p class="card-summary">
-            A corporate breach occurred overnight at NovaCorp headquarters.
-            Sensitive vault data was compromised. The culprit is still at large.
-            You have been deployed as a forensic investigator with access to
-            seven internal systems. Find the culprit. Unlock the vault.
-          </p>
-          <ul class="room-list">
-            <li v-for="room in rooms" :key="room.id">
-              <span class="bullet">▪</span>
-              <strong>{{ room.label }}</strong> — {{ room.desc }}
-            </li>
-          </ul>
-          <div class="declassified-stamp">DECLASSIFIED</div>
+      <section class="hero-note evidence-card evidence-card--wide">
+        <span class="note-pin note-pin--blue"></span>
+        <div class="hero-copy">
+          <p class="hero-kicker">Internal Investigation Board</p>
+          <h1 class="claido-heading">CLAIDO</h1>
+          <p class="hero-subtitle">NovaCorp breach analysis, witness interviews, and evidence correlation.</p>
         </div>
-      </div>
+        <div class="hero-tag">Investigator Access</div>
+      </section>
 
-      <!-- Error -->
-      <div v-if="error" class="error-msg">{{ error }}</div>
+      <section class="briefing-grid">
+        <article class="briefing-card evidence-card">
+          <span class="note-pin note-pin--red"></span>
+          <div class="watermark">CONFIDENTIAL</div>
+          <div class="card-inner">
+            <div class="card-header">
+              <div class="card-title-block">
+                <span class="card-stamp-label">Incident briefing</span>
+                <span class="card-date">2025-03-03</span>
+              </div>
+            </div>
+            <p class="card-summary">
+              A corporate breach occurred overnight at NovaCorp headquarters. Sensitive vault data was compromised.
+              The suspect is still at large. Traverse seven internal systems, cross-reference the evidence, and lock in the four-word passphrase.
+            </p>
+            <ul class="room-list">
+              <li v-for="room in rooms" :key="room.id">
+                <span class="bullet">✦</span>
+                <strong>{{ room.label }}</strong>
+                <span>{{ room.desc }}</span>
+              </li>
+            </ul>
+            <div class="declassified-stamp">Prepared for field use</div>
+          </div>
+        </article>
 
-      <!-- CTA button -->
-      <button
-        class="start-btn"
-        :disabled="loading"
-        @click="startGame"
-      >
-        <span v-if="loading">
-          <span class="spinner-dot"></span>
-          Generating case file...
-        </span>
-        <span v-else>BEGIN INVESTIGATION</span>
-      </button>
+        <aside class="side-column">
+          <section class="snapshot-card evidence-card">
+            <span class="note-pin note-pin--gold"></span>
+            <p class="snapshot-label">Primary leads</p>
+            <ul class="snapshot-list">
+              <li>Hidden vault words are distributed across rooms.</li>
+              <li>NPC interviews may reveal motive and access paths.</li>
+              <li>Each session generates a fresh case state from the backend.</li>
+            </ul>
+          </section>
 
-      <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+          <section class="start-card evidence-card">
+            <span class="note-pin note-pin--red"></span>
+            <p class="start-label">Open a new evidence board</p>
+            <button
+              class="start-btn"
+              :disabled="loading"
+              @click="startGame"
+            >
+              <span v-if="loading">
+                <span class="spinner-dot"></span>
+                Generating case file...
+              </span>
+              <span v-else>Begin Investigation</span>
+            </button>
+            <p class="disclaimer">Frontend visuals updated only; backend session flow stays unchanged.</p>
+          </section>
+        </aside>
+      </section>
+
+      <div v-if="error" class="error-msg evidence-card">{{ error }}</div>
     </div>
   </div>
 </template>
@@ -97,194 +116,217 @@ async function startGame() {
 </script>
 
 <style scoped>
-/* ── Base ─────────────────────────────────────────────── */
 .landing {
   min-height: 100vh;
-  background: #0a0a0a;
   display: flex;
-  align-items: flex-start;
   justify-content: center;
-  padding: 40px 24px 60px;
+  padding: 34px 24px 60px;
   overflow-y: auto;
-  position: relative;
-  font-family: 'Courier New', Courier, monospace;
 }
 
-/* Scanline overlay */
-.scanlines {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.08) 3px,
-    rgba(0, 0, 0, 0.08) 4px
-  );
-}
-
-.landing-inner {
+.landing-board {
   position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 660px;
+  width: min(1120px, 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 28px;
+  gap: 24px;
 }
 
-/* ── Top bar ──────────────────────────────────────────── */
-.top-bar {
-  width: 100%;
+.board-thread {
+  position: absolute;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(133, 18, 21, 0.2), rgba(173, 29, 33, 0.78), rgba(133, 18, 21, 0.2));
+  box-shadow: 0 1px 4px rgba(102, 17, 20, 0.16);
+  pointer-events: none;
+}
+
+.board-thread--one {
+  top: 92px;
+  right: 26%;
+  width: 220px;
+  transform: rotate(-12deg);
+}
+
+.board-thread--two {
+  top: 250px;
+  left: 38%;
+  width: 280px;
+  transform: rotate(10deg);
+}
+
+.board-thread--three {
+  bottom: 84px;
+  left: 16%;
+  width: 240px;
+  transform: rotate(-15deg);
+}
+
+.evidence-strip,
+.evidence-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(238, 225, 204, 0.96));
+  border: 1px solid rgba(89, 65, 42, 0.2);
+  box-shadow: var(--paper-shadow);
+}
+
+.evidence-strip {
+  padding: 12px 18px;
+  border-radius: 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.evidence-card {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.evidence-card--wide {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 28px 32px;
+}
+
+.note-pin {
+  position: absolute;
+  top: -8px;
+  left: 24px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24), inset 0 1px 1px rgba(255, 255, 255, 0.68);
+}
+
+.note-pin--red { background: #ca4b42; }
+.note-pin--blue { background: #4d78a5; }
+.note-pin--gold { background: #bc8c2c; }
+
+.top-bar {
+  z-index: 1;
+}
+
+.classified-badge,
+.case-file,
+.hero-kicker,
+.hero-tag,
+.card-stamp-label,
+.card-date,
+.snapshot-label,
+.start-label,
+.disclaimer {
+  font-family: var(--font-mono);
+}
+
 .classified-badge {
-  color: #e53935;
+  color: var(--accent-red);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  animation: blink-badge 1.2s step-start infinite;
-}
-
-@keyframes blink-badge {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 
 .case-file {
-  color: #666;
+  color: var(--text-muted);
   font-size: 11px;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 }
 
-/* ── Hero heading ─────────────────────────────────────── */
-.hero-block {
-  text-align: center;
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hero-kicker {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .claido-heading {
-  font-size: clamp(64px, 12vw, 96px);
-  font-weight: 900;
-  letter-spacing: 18px;
-  color: #00ff41;
-  margin: 0 0 12px;
-  position: relative;
-  animation: flicker 4s infinite;
-  text-shadow:
-    0 0 8px #00ff41,
-    0 0 24px rgba(0, 255, 65, 0.4);
-}
-
-.claido-heading::before,
-.claido-heading::after {
-  content: attr(data-text);
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  overflow: hidden;
-}
-
-.claido-heading::before {
-  color: #ff004c;
-  clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%);
-  transform: translateX(-3px);
-  animation: glitch-1 3.5s infinite;
-  opacity: 0;
-}
-
-.claido-heading::after {
-  color: #00f0ff;
-  clip-path: polygon(0 55%, 100% 55%, 100% 75%, 0 75%);
-  transform: translateX(3px);
-  animation: glitch-2 3.5s infinite;
-  opacity: 0;
-}
-
-@keyframes flicker {
-  0%, 95%, 100% { opacity: 1; }
-  96% { opacity: 0.4; }
-  97% { opacity: 1; }
-  98% { opacity: 0.2; }
-  99% { opacity: 1; }
-}
-
-@keyframes glitch-1 {
-  0%, 89%, 100% { opacity: 0; transform: translateX(0); }
-  90% { opacity: 0.8; transform: translateX(-4px); }
-  91% { opacity: 0; }
-  92% { opacity: 0.6; transform: translateX(3px); }
-  93% { opacity: 0; }
-}
-
-@keyframes glitch-2 {
-  0%, 89%, 100% { opacity: 0; transform: translateX(0); }
-  90% { opacity: 0; }
-  91% { opacity: 0.7; transform: translateX(4px); }
-  92% { opacity: 0; }
-  93% { opacity: 0.5; transform: translateX(-2px); }
-  94% { opacity: 0; }
+  margin: 0;
+  font-size: clamp(52px, 10vw, 92px);
+  letter-spacing: 10px;
+  color: #311d0e;
+  text-transform: uppercase;
+  font-family: var(--font-display);
 }
 
 .hero-subtitle {
-  color: #888;
-  font-size: 13px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
   margin: 0;
+  max-width: 620px;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-secondary);
 }
 
-/* ── Briefing card ────────────────────────────────────── */
+.hero-tag {
+  align-self: flex-start;
+  padding: 10px 14px;
+  border: 2px solid rgba(185, 70, 54, 0.6);
+  color: rgba(185, 70, 54, 0.82);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 12px;
+  font-weight: 800;
+  transform: rotate(-6deg);
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.8fr);
+  gap: 24px;
+  align-items: start;
+}
+
 .briefing-card {
-  width: 100%;
-  position: relative;
-  background: #f5f0e8;
-  border: 2px solid #d4c9b0;
-  border-radius: 2px;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(0,0,0,0.05);
-  overflow: hidden;
+  min-height: 100%;
 }
 
-/* Diagonal "TOP SECRET" watermark */
+.briefing-card::after,
+.snapshot-card::after,
+.start-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, transparent 0 24px, rgba(121, 92, 67, 0.08) 24px 25px);
+  pointer-events: none;
+}
+
 .watermark {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-35deg);
-  font-size: 72px;
+  top: 48%;
+  left: 52%;
+  transform: translate(-50%, -50%) rotate(-24deg);
+  font-size: clamp(44px, 9vw, 88px);
+  letter-spacing: 6px;
+  color: rgba(185, 70, 54, 0.08);
   font-weight: 900;
-  letter-spacing: 8px;
-  color: rgba(200, 30, 30, 0.09);
-  white-space: nowrap;
   pointer-events: none;
-  user-select: none;
-  font-family: 'Courier New', Courier, monospace;
 }
 
 .card-inner {
   position: relative;
-  padding: 24px 28px 28px;
+  z-index: 1;
+  padding: 28px 28px 32px;
 }
 
 .card-header {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #c8b89a;
+  border-bottom: 2px solid rgba(125, 96, 69, 0.24);
 }
 
 .card-title-block {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 12px;
 }
 
 .card-stamp-label {
@@ -292,129 +334,98 @@ async function startGame() {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #2c1a0e;
 }
 
 .card-date {
   font-size: 12px;
-  color: #7a6a55;
-  font-family: 'Courier New', Courier, monospace;
+  color: var(--text-muted);
 }
 
 .card-summary {
-  color: #3a2e1e;
-  font-size: 13px;
-  line-height: 1.75;
-  margin: 0 0 16px;
-  font-family: Georgia, serif;
+  margin: 0 0 20px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-size: 15px;
 }
 
 .room-list {
   list-style: none;
-  margin: 0 0 20px;
+  display: grid;
+  gap: 10px;
+  margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
 }
 
 .room-list li {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
   align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-  color: #2c1a0e;
-  font-family: 'Courier New', Courier, monospace;
+  color: var(--text-secondary);
 }
 
 .bullet {
-  color: #a0522d;
-  flex-shrink: 0;
+  color: var(--accent-red);
 }
 
 .room-list strong {
-  color: #1a0f00;
+  color: var(--text-primary);
 }
 
-/* Red rubber "DECLASSIFIED" stamp in corner */
 .declassified-stamp {
-  position: absolute;
-  bottom: 18px;
-  right: 20px;
-  border: 3px solid rgba(180, 20, 20, 0.75);
-  color: rgba(180, 20, 20, 0.75);
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 3px;
+  display: inline-flex;
+  margin-top: 22px;
+  padding: 5px 12px;
+  border: 2px solid rgba(185, 70, 54, 0.65);
+  color: rgba(185, 70, 54, 0.82);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 3px;
-  font-family: 'Courier New', Courier, monospace;
-  transform: rotate(-8deg);
-  pointer-events: none;
-  user-select: none;
+  transform: rotate(-5deg);
 }
 
-/* ── Error ────────────────────────────────────────────── */
-.error-msg {
-  width: 100%;
-  background: rgba(200, 30, 30, 0.12);
-  border: 1px solid #e53935;
-  border-radius: 2px;
-  color: #ff6b6b;
-  padding: 12px 16px;
-  font-size: 13px;
+.side-column {
+  display: grid;
+  gap: 20px;
 }
 
-/* ── Start button ─────────────────────────────────────── */
+.snapshot-card,
+.start-card {
+  padding: 22px 20px 20px;
+}
+
+.snapshot-label,
+.start-label {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-red);
+  margin: 0 0 12px;
+}
+
+.snapshot-list {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
 .start-btn {
   width: 100%;
-  padding: 16px 24px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 3px;
+  padding: 16px 20px;
   text-transform: uppercase;
-  font-family: 'Courier New', Courier, monospace;
-  color: #fff;
-  background: #b71c1c;
-  border: 2px solid #e53935;
-  border-radius: 2px;
-  cursor: pointer;
-  position: relative;
-  animation: pulse-glow 2.4s ease-in-out infinite;
-  transition: background 0.15s, transform 0.1s;
+  letter-spacing: 3px;
+  font-family: var(--font-mono);
+  font-weight: 800;
 }
 
-.start-btn:hover:not(:disabled) {
-  background: #c62828;
-  transform: translateY(-1px);
-}
-
-.start-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.start-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  animation: none;
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow:
-      0 0 8px rgba(229, 57, 53, 0.4),
-      0 0 20px rgba(229, 57, 53, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 0 16px rgba(229, 57, 53, 0.8),
-      0 0 40px rgba(229, 57, 53, 0.4),
-      0 0 60px rgba(229, 57, 53, 0.1);
-  }
-}
-
-/* Spinner for loading state */
 .spinner-dot {
   display: inline-block;
   width: 8px;
@@ -431,12 +442,47 @@ async function startGame() {
   50% { opacity: 0.3; transform: scale(0.6); }
 }
 
-/* ── Disclaimer ───────────────────────────────────────── */
 .disclaimer {
-  color: #444;
+  position: relative;
+  z-index: 1;
+  margin: 14px 0 0;
+  color: var(--text-muted);
   font-size: 11px;
-  text-align: center;
-  letter-spacing: 0.5px;
-  margin: 0;
+  line-height: 1.6;
+}
+
+.error-msg {
+  padding: 14px 16px;
+  color: #8f2018;
+  border-color: rgba(143, 32, 24, 0.3);
+}
+
+@media (max-width: 860px) {
+  .briefing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-card--wide {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .landing {
+    padding: 22px 14px 40px;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .card-title-block,
+  .room-list li {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
 }
 </style>
