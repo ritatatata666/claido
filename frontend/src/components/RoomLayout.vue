@@ -1,18 +1,26 @@
 <template>
   <div class="room-layout">
+    <!-- Room cleared overlay -->
+    <Transition name="cleared-fade">
+      <div v-if="showClearedOverlay" class="cleared-overlay">
+        <div class="cleared-box">
+          <div class="cleared-icon">✓</div>
+          <div class="cleared-text">Room Cleared!</div>
+          <div class="cleared-sub">Returning to Hub...</div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Top bar -->
     <header class="topbar">
       <div class="topbar-left">
-        <span class="logo">🔐 CLAIDO</span>
+        <button class="hub-btn" @click="router.push('/hub')">← Hub</button>
       </div>
       <div class="topbar-center">
         <span class="room-name">{{ roomLabel }}</span>
       </div>
       <div class="topbar-right">
         <span class="timer">{{ formattedTime }}</span>
-        <button v-if="nextRoom" class="next-room-btn" @click="goToRoom(nextRoom)">
-          {{ nextRoom.label }} →
-        </button>
       </div>
     </header>
 
@@ -44,7 +52,7 @@
       </aside>
     </div>
 
-    <!-- Progress dots -->
+    <!-- Progress dots (read-only status indicators) -->
     <footer class="progress-bar">
       <div
         v-for="room in rooms"
@@ -54,7 +62,6 @@
           done: store.isRoomComplete(room.id)
         }]"
         :title="room.label"
-        @click="goToRoom(room)"
       >
         <span class="dot-label">{{ room.label }}</span>
       </div>
@@ -63,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 
@@ -71,6 +78,7 @@ const store = useGameStore()
 const route = useRoute()
 const router = useRouter()
 const sidebarCollapsed = ref(false)
+const showClearedOverlay = ref(false)
 
 const rooms = [
   { id: 'shell', label: 'NovaShell' },
@@ -95,24 +103,31 @@ const roomLabels = {
 const currentRoomId = computed(() => route.path.replace('/', ''))
 const roomLabel = computed(() => roomLabels[currentRoomId.value] || currentRoomId.value)
 
-const currentRoomIndex = computed(() => rooms.findIndex(r => r.id === currentRoomId.value))
-const nextRoom = computed(() => rooms[currentRoomIndex.value + 1] ?? null)
-
-function goToRoom(room) {
-  router.push('/' + room.id)
-}
+// Watch for room completion to trigger overlay then navigate to hub
+watch(
+  () => store.completedRooms,
+  (newVal) => {
+    const room = currentRoomId.value
+    if (room && room !== 'vault' && newVal.includes(room) && !showClearedOverlay.value) {
+      showClearedOverlay.value = true
+      setTimeout(() => {
+        showClearedOverlay.value = false
+        router.push('/hub')
+      }, 2000)
+    }
+  },
+  { deep: true }
+)
 
 // Timer
 const elapsed = ref(0)
 let timerInterval = null
 
 onMounted(() => {
-  // Redirect to landing if no active session
   if (!store.sessionId) {
     router.replace('/')
     return
   }
-
   timerInterval = setInterval(() => {
     if (store.gameStartTime) {
       elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000)
@@ -153,24 +168,11 @@ const formattedTime = computed(() => {
   z-index: 10;
 }
 
-.topbar-left {
-  display: flex;
-  align-items: center;
-}
+.topbar-left { display: flex; align-items: center; }
+.topbar-center { display: flex; justify-content: center; }
+.topbar-right { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 
-.topbar-center {
-  display: flex;
-  justify-content: center;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-}
-
-.next-room-btn {
+.hub-btn {
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -179,22 +181,66 @@ const formattedTime = computed(() => {
   padding: 4px 12px;
   border-radius: var(--radius);
   letter-spacing: 0.5px;
+  cursor: pointer;
+  font-family: var(--font-mono);
   transition: border-color var(--transition), color var(--transition);
 }
 
-.next-room-btn:hover {
+.hub-btn:hover {
   border-color: var(--accent-blue);
   color: var(--accent-blue);
-  opacity: 1;
 }
 
-.logo {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
+/* Room cleared overlay */
+.cleared-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
 }
+
+.cleared-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 64px;
+  background: #0d1a0d;
+  border: 2px solid #3fb950;
+  border-radius: 6px;
+  box-shadow: 0 0 40px rgba(63, 185, 80, 0.4);
+}
+
+.cleared-icon {
+  font-size: 48px;
+  color: #3fb950;
+  line-height: 1;
+}
+
+.cleared-text {
+  font-size: 24px;
+  font-weight: 700;
+  color: #3fb950;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: 'Courier New', monospace;
+}
+
+.cleared-sub {
+  font-size: 13px;
+  color: #2a6a2a;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+}
+
+.cleared-fade-enter-active,
+.cleared-fade-leave-active { transition: opacity 0.3s ease; }
+.cleared-fade-enter-from,
+.cleared-fade-leave-to { opacity: 0; }
 
 .room-name {
   font-size: 13px;
@@ -233,9 +279,7 @@ const formattedTime = computed(() => {
   transition: width var(--transition);
 }
 
-.clue-sidebar.collapsed {
-  width: 24px;
-}
+.clue-sidebar.collapsed { width: 24px; }
 
 .sidebar-toggle {
   position: absolute;
@@ -317,8 +361,7 @@ const formattedTime = computed(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
-  cursor: pointer;
+  cursor: default;
 }
 
 .progress-dot::before {
@@ -331,14 +374,8 @@ const formattedTime = computed(() => {
   transition: background var(--transition);
 }
 
-.progress-dot.active::before {
-  background: var(--accent-blue);
-  box-shadow: 0 0 6px var(--accent-blue);
-}
-
-.progress-dot.done::before {
-  background: var(--accent-green);
-}
+.progress-dot.active::before { background: var(--accent-blue); box-shadow: 0 0 6px var(--accent-blue); }
+.progress-dot.done::before { background: var(--accent-green); }
 
 .dot-label {
   font-size: 9px;
@@ -348,11 +385,6 @@ const formattedTime = computed(() => {
   margin-top: 2px;
 }
 
-.progress-dot.active .dot-label {
-  color: var(--text-secondary);
-}
-
-.progress-dot.done .dot-label {
-  color: var(--accent-green);
-}
+.progress-dot.active .dot-label { color: var(--text-secondary); }
+.progress-dot.done .dot-label { color: var(--accent-green); }
 </style>

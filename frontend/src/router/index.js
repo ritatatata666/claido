@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '../views/LandingView.vue'
+import HubView from '../views/HubView.vue'
 import ShellView from '../views/ShellView.vue'
 import DatabaseView from '../views/DatabaseView.vue'
 import MailView from '../views/MailView.vue'
@@ -10,6 +11,7 @@ import VaultView from '../views/VaultView.vue'
 
 const routes = [
   { path: '/', component: LandingView },
+  { path: '/hub', component: HubView },
   { path: '/shell', component: ShellView },
   { path: '/database', component: DatabaseView },
   { path: '/mail', component: MailView },
