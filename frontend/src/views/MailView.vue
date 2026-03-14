@@ -120,7 +120,8 @@ function resolveVaultWord2() {
 
 function normalizeEmails(rawEmails, vaultWord2) {
   const normalized = rawEmails.map(e => ({ ...e, isFlagged: false }))
-  const hasClue = normalized.some(e => String(e.body || '').toLowerCase().includes(vaultWord2))
+  const lowerVault = vaultWord2.toLowerCase()
+  const hasClue = normalized.some(e => String(e.body || '').toLowerCase().includes(lowerVault))
   if (hasClue) return normalized
 
   if (normalized.length > 0) {
