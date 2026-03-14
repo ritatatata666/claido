@@ -381,6 +381,7 @@ function isSuspicious(row) {
   padding: 10px 14px;
   border-top: 1px solid var(--border-color);
   font-family: var(--font-mono);
+  justify-content: space-between;
 }
 
 .submit-btn {
