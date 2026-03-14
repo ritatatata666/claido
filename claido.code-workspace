@@ -1,0 +1,14 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "claido"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.vs/": true
+    },
+    "terminal.integrated.cwd": "."
+  }
+}
