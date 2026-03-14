@@ -11,7 +11,7 @@ $shellCommand = if (Get-Command pwsh -ErrorAction SilentlyContinue) {
 Start-Process -FilePath $shellCommand -WorkingDirectory $frontendPath -ArgumentList @(
     "-NoExit",
     "-Command",
-    "npm run dev"
+    "npm install; if (`$LASTEXITCODE -eq 0) { npm run dev }"
 )
 
 Start-Process -FilePath $shellCommand -WorkingDirectory $backendPath -ArgumentList @(

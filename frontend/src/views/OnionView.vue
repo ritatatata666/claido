@@ -52,7 +52,8 @@
           <div
             v-for="listing in marketListings"
             :key="listing.id"
-            class="listing-item"
+            :class="['listing-item', { selected: selectedListing?.id === listing.id }]"
+            @click="selectedListing = selectedListing?.id === listing.id ? null : listing"
           >
             <div class="listing-top">
               <span class="listing-title">{{ listing.title }}</span>
@@ -61,6 +62,13 @@
             <div class="listing-seller">sold by: {{ listing.seller }}</div>
             <div class="listing-desc">{{ listing.description }}</div>
             <span class="listing-cat">[ {{ listing.category }} ]</span>
+            <div v-if="selectedListing?.id === listing.id" class="listing-actions">
+              <button class="submit-evidence-btn" @click.stop="submitOnionEvidence(listing)">
+                ⚑ Submit as evidence
+              </button>
+              <span v-if="onionSubmitResult[listing.id] === 'correct'" class="submit-correct">✓ Evidence logged</span>
+              <span v-else-if="onionSubmitResult[listing.id] === 'wrong'" class="submit-wrong">✗ Not enough linkage to culprit.</span>
+            </div>
           </div>
         </div>
       </div>
@@ -81,6 +89,8 @@ const forumPosts = ref([])
 const marketListings = ref([])
 const activeTab = ref('FORUM')
 const selectedPost = ref(null)
+const selectedListing = ref(null)
+const onionSubmitResult = ref({})
 const tabs = ['FORUM', 'MARKET']
 
 onMounted(async () => {
@@ -94,25 +104,27 @@ onMounted(async () => {
     marketListings.value = defaults.marketListings
   } finally {
     loading.value = false
-    checkForClue()
   }
 })
 
-function checkForClue() {
+function submitOnionEvidence(listing) {
   const culprit = store.sessionState?.culprit
-  if (!culprit) return
+  if (!culprit || !listing) return
   const dept = culprit.department?.toLowerCase()
-  const listing = marketListings.value.find(l =>
-    l.description?.toLowerCase().includes(dept) || l.description?.toLowerCase().includes('novacorp')
-  )
-  if (listing) {
+  const haystack = `${listing.title || ''} ${listing.description || ''}`.toLowerCase()
+  const matchesDept = !!dept && haystack.includes(dept)
+
+  if (matchesDept) {
+    onionSubmitResult.value[listing.id] = 'correct'
     store.addClue(
       'onion-market',
       'The Onion',
       `Dark web listing found: "${listing.title}" — relates to ${culprit.department} department.`
     )
     store.markRoomComplete('onion')
+    return
   }
+  onionSubmitResult.value[listing.id] = 'wrong'
 }
 
 function getDefaultContent() {
@@ -313,6 +325,12 @@ function getDefaultContent() {
   border: 1px dotted #003300;
   padding: 12px;
   margin-bottom: 8px;
+  cursor: pointer;
+}
+
+.listing-item.selected {
+  border-color: #00ff41;
+  background: #020a02;
 }
 
 .listing-top {
@@ -350,5 +368,40 @@ function getDefaultContent() {
   font-size: 10px;
   color: #004400;
   letter-spacing: 1px;
+}
+
+.listing-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submit-evidence-btn {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 4px 12px;
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid #00ff41;
+  color: #00ff41;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.submit-evidence-btn:hover {
+  background: rgba(0, 255, 65, 0.16);
+}
+
+.submit-correct {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4fdc7d;
+}
+
+.submit-wrong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c85e5e;
 }
 </style>
