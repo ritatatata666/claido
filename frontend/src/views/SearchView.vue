@@ -283,6 +283,7 @@ const visibleColumns = ref(['timestamp', 'level', 'service', 'user', 'message'])
 const showColumnPicker = ref(false)
 const searchInputEl = ref(null)
 const searchSubmitResultById = ref({})
+const activeVaultWord4 = ref('')
 
 const showAutocomplete = ref(false)
 const autocompleteIndex = ref(-1)
@@ -670,6 +671,7 @@ function hideAutocompleteDelayed() {
 
 onMounted(async () => {
   const vaultWord4 = resolveVaultWord4()
+  activeVaultWord4.value = vaultWord4
   try {
     const data = await store.enterRoom('search')
     logs.value = normalizeSearchLogs(Array.isArray(data) ? data : [], vaultWord4)
@@ -754,7 +756,7 @@ function applyFilter() {
 }
 
 function submitSearchEvidenceForLog(log) {
-  const vaultWord = store.sessionState?.vaultWord4
+  const vaultWord = activeVaultWord4.value
   const message = String(log?.message || '').toLowerCase()
   const user = String(log?.user || '').toLowerCase()
   const isWhistle = String(log?.level || '').toUpperCase() === 'ERROR'

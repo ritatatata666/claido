@@ -91,10 +91,14 @@ const activeTab = ref('FORUM')
 const selectedPost = ref(null)
 const selectedListing = ref(null)
 const onionSubmitResult = ref({})
+const activeCulpritDepartment = ref('')
+const activeCulpritDepartmentLabel = ref('')
 const tabs = ['FORUM', 'MARKET']
 
 onMounted(async () => {
   const culpritDepartment = resolveCulpritDepartment()
+  activeCulpritDepartmentLabel.value = culpritDepartment
+  activeCulpritDepartment.value = culpritDepartment.toLowerCase()
   try {
     const data = await store.enterRoom('onion')
     const normalized = normalizeOnionContent(data, culpritDepartment)
@@ -143,9 +147,8 @@ function normalizeOnionContent(data, culpritDepartment) {
 }
 
 function submitOnionEvidence(listing) {
-  const culprit = store.sessionState?.culprit
-  if (!culprit || !listing) return
-  const dept = culprit.department?.toLowerCase()
+  if (!listing) return
+  const dept = activeCulpritDepartment.value
   const haystack = `${listing.title || ''} ${listing.description || ''}`.toLowerCase()
   const matchesDept = !!dept && haystack.includes(dept)
 
@@ -154,7 +157,7 @@ function submitOnionEvidence(listing) {
     store.addClue(
       'onion-market',
       'The Onion',
-      `Dark web listing found: "${listing.title}" — relates to ${culprit.department} department.`
+      `Dark web listing found: "${listing.title}" — relates to ${activeCulpritDepartmentLabel.value} department.`
     )
     store.markRoomComplete('onion')
     return

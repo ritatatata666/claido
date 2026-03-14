@@ -27,10 +27,14 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
+const activeVaultWord1 = ref('')
+const activeCulpritId = ref(1001)
 
 onMounted(async () => {
   const vaultWord1 = resolveVaultWord1()
   const culpritId = Number(store.sessionState?.culprit?.id) || 1001
+  activeVaultWord1.value = vaultWord1
+  activeCulpritId.value = culpritId
 
   // Restore shell history from store
   const restoredHistory = Array.isArray(store.shellHistory) ? store.shellHistory : []
@@ -382,7 +386,7 @@ function cmdCat(arg) {
 
   // Check for suspicious access log clue
   if (path.endsWith('access.log')) {
-    const culpritId = store.sessionState?.culprit?.id
+    const culpritId = activeCulpritId.value
     if (culpritId && content.includes(String(culpritId))) {
       store.addClue(
         'shell-access-log',
@@ -410,7 +414,7 @@ function cmdBase64(args) {
     const decoded = atob(value)
     writelnTerminal(decoded)
     // Check if the decoded value matches the session vault word
-    const expected = store.sessionState?.vaultWord1
+    const expected = activeVaultWord1.value
     if (expected && decoded === expected) {
       store.addClue(
         'shell-vault-word',

@@ -88,9 +88,11 @@ const loading = ref(true)
 const selectedPage = ref(null)
 const searchTerm = ref('')
 const decodedContent = ref({})
+const activeVaultWord3 = ref('')
 
 onMounted(async () => {
   const vaultWord3 = resolveVaultWord3()
+  activeVaultWord3.value = vaultWord3
   try {
     const data = await store.enterRoom('wiki')
     pages.value = normalizeWikiPages(Array.isArray(data) ? data : [], vaultWord3)
@@ -141,7 +143,7 @@ function decodeRot13(page) {
   const decoded = rot13(page.redactedSection || '')
   decodedContent.value[page.id] = decoded
 
-  const vaultWord = store.sessionState?.vaultWord3
+  const vaultWord = activeVaultWord3.value
   if (vaultWord && decoded.toLowerCase().includes(vaultWord.toLowerCase())) {
     store.addClue(
       'wiki-vault-word',
