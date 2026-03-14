@@ -61,6 +61,7 @@ export const useGameStore = defineStore('game', {
       this.completedRooms = []
       this.conversationHistories = {}
       this.roomCache = {}
+      this.shellHistory = []
       persistState(this)
       return data
     },
