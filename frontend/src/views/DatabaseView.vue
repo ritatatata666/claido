@@ -99,7 +99,7 @@ onMounted(async () => {
     // Dynamically load sql.js
     const initSqlJs = (await import('sql.js')).default
     const SQL = await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/${file}`,
+      locateFile: file => `/${file}`,
     })
     db.value = new SQL.Database(bytes)
   } catch (e) {
