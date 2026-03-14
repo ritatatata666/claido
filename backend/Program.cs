@@ -3,6 +3,7 @@ using Claido.Models;
 using Claido.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.LoadApiKey();
 
 builder.Services.AddControllers();
 builder.Services.AddHttpClient<AiService>();
