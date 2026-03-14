@@ -669,7 +669,7 @@ function hideAutocompleteDelayed() {
 }
 
 onMounted(async () => {
-  const vaultWord4 = String(store.sessionState?.vaultWord4 || '').toLowerCase()
+  const vaultWord4 = resolveVaultWord4()
   try {
     const data = await store.enterRoom('search')
     logs.value = normalizeSearchLogs(Array.isArray(data) ? data : [], vaultWord4)
@@ -680,6 +680,14 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function resolveVaultWord4() {
+  const fromSession = String(store.sessionState?.vaultWord4 || '').toLowerCase().trim()
+  if (fromSession) return fromSession
+  const fallback = 'greed'
+  console.warn('[NovaSearch] Using fallback vaultWord4 because session value is missing.')
+  return fallback
+}
 
 function getHour(log) {
   const ts = log.timestamp || ''
@@ -801,6 +809,7 @@ function ensureWhistleblowerClue(entries, vaultWord4) {
 
   if (whistleIndex >= 0) {
     const current = entries[whistleIndex]
+    console.warn('[NovaSearch] Injected fallback clue word into whistleblower log to keep puzzle solvable.')
     entries[whistleIndex] = {
       ...current,
       user: 'whistleblower',
@@ -820,12 +829,13 @@ function ensureWhistleblowerClue(entries, vaultWord4) {
     message: fallbackMessage,
     ip: '192.168.1.99',
   }
+  console.warn('[NovaSearch] Added fallback whistleblower log to keep puzzle solvable.')
   const insertAt = Math.min(35, entries.length)
   entries.splice(insertAt, 0, clueLog)
   return entries
 }
 
-function getDefaultLogs(vaultWord4 = 'greed') {
+function getDefaultLogs(vaultWord4) {
   const base = []
   const services = ['auth', 'api', 'db', 'badge', 'mail']
   const lvls = ['INFO', 'INFO', 'INFO', 'WARN', 'DEBUG']

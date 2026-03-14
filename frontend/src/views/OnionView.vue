@@ -94,18 +94,53 @@ const onionSubmitResult = ref({})
 const tabs = ['FORUM', 'MARKET']
 
 onMounted(async () => {
+  const culpritDepartment = resolveCulpritDepartment()
   try {
     const data = await store.enterRoom('onion')
-    forumPosts.value = data.forumPosts || []
-    marketListings.value = data.marketListings || []
+    const normalized = normalizeOnionContent(data, culpritDepartment)
+    forumPosts.value = normalized.forumPosts
+    marketListings.value = normalized.marketListings
   } catch (e) {
-    const defaults = getDefaultContent()
+    const defaults = getDefaultContent(culpritDepartment)
     forumPosts.value = defaults.forumPosts
     marketListings.value = defaults.marketListings
   } finally {
     loading.value = false
   }
 })
+
+function resolveCulpritDepartment() {
+  const dept = String(store.sessionState?.culprit?.department || '').trim()
+  if (dept) return dept
+  const fallback = 'Finance'
+  console.warn('[Onion] Using fallback culprit department because session value is missing.')
+  return fallback
+}
+
+function normalizeOnionContent(data, culpritDepartment) {
+  const forumPosts = Array.isArray(data?.forumPosts) ? data.forumPosts : []
+  const marketListings = Array.isArray(data?.marketListings) ? data.marketListings : []
+  const deptNeedle = culpritDepartment.toLowerCase()
+
+  const hasDeptListing = marketListings.some((listing) => {
+    const haystack = `${listing?.title || ''} ${listing?.description || ''}`.toLowerCase()
+    return haystack.includes(deptNeedle)
+  })
+  if (hasDeptListing) return { forumPosts, marketListings }
+
+  if (marketListings.length > 0) {
+    marketListings[0] = {
+      ...marketListings[0],
+      title: `${marketListings[0].title || 'Stolen credentials'} — ${culpritDepartment} access`,
+      description: `${marketListings[0].description || ''} Linked to NovaCorp ${deptNeedle} department credentials.`.trim(),
+    }
+    console.warn('[Onion] Injected culprit department into listing data to keep puzzle solvable.')
+    return { forumPosts, marketListings }
+  }
+
+  console.warn('[Onion] Onion room data missing listings; using default content with fallback department clue.')
+  return getDefaultContent(culpritDepartment)
+}
 
 function submitOnionEvidence(listing) {
   const culprit = store.sessionState?.culprit
@@ -127,7 +162,9 @@ function submitOnionEvidence(listing) {
   onionSubmitResult.value[listing.id] = 'wrong'
 }
 
-function getDefaultContent() {
+function getDefaultContent(culpritDepartment) {
+  const dept = culpritDepartment
+  const deptLower = dept.toLowerCase()
   return {
     forumPosts: [
       {
@@ -153,8 +190,8 @@ function getDefaultContent() {
         handle: 'xd4rk_n3t',
         timestamp: '2025-03-02T22:11:00',
         category: 'market',
-        title: '[SALE] NovaCorp Finance wing credentials — fresh dump',
-        body: 'Selling access to a Finance dept account. Level 5 clearance. Verified. Contact via escrow.',
+        title: `[SALE] NovaCorp ${dept} wing credentials — fresh dump`,
+        body: `Selling access to a ${dept} dept account. Level 5 clearance. Verified. Contact via escrow.`,
         replies: 3,
       },
     ],
@@ -162,9 +199,9 @@ function getDefaultContent() {
       {
         id: 'listing-001',
         seller: 'xd4rk_n3t',
-        title: 'NovaCorp Finance Dept — Level 5 Access',
+        title: `NovaCorp ${dept} Dept — Level 5 Access`,
         price: '0.045 BTC',
-        description: 'Fresh credentials for a NovaCorp Finance department account. High clearance. Vault access included.',
+        description: `Fresh credentials for a NovaCorp ${deptLower} department account. High clearance. Vault access included.`,
         category: 'credentials',
       },
       {

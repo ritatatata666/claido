@@ -90,7 +90,7 @@ const searchTerm = ref('')
 const decodedContent = ref({})
 
 onMounted(async () => {
-  const vaultWord3 = String(store.sessionState?.vaultWord3 || '').toLowerCase()
+  const vaultWord3 = resolveVaultWord3()
   try {
     const data = await store.enterRoom('wiki')
     pages.value = normalizeWikiPages(Array.isArray(data) ? data : [], vaultWord3)
@@ -102,6 +102,14 @@ onMounted(async () => {
     if (pages.value.length > 0) selectedPage.value = pages.value[0]
   }
 })
+
+function resolveVaultWord3() {
+  const fromSession = String(store.sessionState?.vaultWord3 || '').toLowerCase().trim()
+  if (fromSession) return fromSession
+  const fallback = 'identity'
+  console.warn('[NovaWiki] Using fallback vaultWord3 because session value is missing.')
+  return fallback
+}
 
 const filteredPages = computed(() => {
   if (!searchTerm.value) return pages.value
@@ -160,6 +168,7 @@ function ensureRedactedContainsVaultWord(page, vaultWord3) {
   if (decoded.toLowerCase().includes(vaultWord3)) {
     return page
   }
+  console.warn('[NovaWiki] Injected fallback clue word into redacted section to keep puzzle solvable.')
   const forcedSentence = buildImmersiveDecodedNote(vaultWord3, page?.title)
   return {
     ...page,
@@ -178,6 +187,7 @@ function normalizeWikiPages(rawPages, vaultWord3) {
     return basePages
   }
 
+  console.warn('[NovaWiki] Missing redacted page in room data; creating one to keep puzzle solvable.')
   const fallbackPage = basePages[0]
   basePages[0] = ensureRedactedContainsVaultWord({
     ...fallbackPage,
@@ -188,7 +198,7 @@ function normalizeWikiPages(rawPages, vaultWord3) {
 }
 
 function getDefaultPages(vaultWord3) {
-  const safeWord = vaultWord3 || 'identity'
+  const safeWord = vaultWord3
   return [
     {
       id: 'page-001',
