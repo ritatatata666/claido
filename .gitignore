@@ -12,8 +12,12 @@ backend/obj/
 *.log
 nohup.out
 
+# Developer Tools
+.vs/
+
 # Environment / secrets
 appsettings.Development.json
+.env
 .env.local
 .env.*.local
 
