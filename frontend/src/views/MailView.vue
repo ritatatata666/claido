@@ -202,10 +202,28 @@ function getDefaultEmails() {
   grid-template-columns: 180px 280px 1fr;
   height: 100%;
   overflow: hidden;
+  position: relative;
+  background: #0a0a0f;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.mail-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
 }
 
 .mail-sidebar {
-  background: var(--bg-secondary);
+  background: #0d0d14;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -215,8 +233,11 @@ function getDefaultEmails() {
   padding: 16px;
   font-size: 14px;
   font-weight: 700;
-  color: var(--accent-blue);
+  color: #00ff41;
   border-bottom: 1px solid var(--border-color);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .folder-list { padding: 8px 0; }
@@ -232,8 +253,8 @@ function getDefaultEmails() {
   transition: background var(--transition);
 }
 
-.folder-item:hover { background: var(--bg-surface); }
-.folder-item.active { background: var(--bg-surface); color: var(--text-primary); }
+.folder-item:hover { background: rgba(0, 255, 65, 0.05); }
+.folder-item.active { background: rgba(0, 255, 65, 0.08); color: #00ff41; border-left: 2px solid #00ff41; }
 .folder-icon { font-size: 14px; }
 
 .folder-count {
@@ -276,8 +297,8 @@ function getDefaultEmails() {
   transition: background var(--transition);
 }
 
-.email-row:hover { background: var(--bg-surface); }
-.email-row.selected { background: rgba(31, 111, 235, 0.1); border-left: 3px solid var(--accent-blue); }
+.email-row:hover { background: rgba(0, 255, 65, 0.04); }
+.email-row.selected { background: rgba(0, 255, 65, 0.08); border-left: 3px solid #00ff41; }
 
 .email-row.unread .email-from,
 .email-row.unread .email-subject { font-weight: 700; color: var(--text-primary); }
@@ -382,16 +403,17 @@ function getDefaultEmails() {
   padding: 8px 18px;
   font-size: 13px;
   font-weight: 600;
-  font-family: var(--font-mono);
-  background: rgba(31, 111, 235, 0.1);
-  border: 1px solid var(--accent-blue);
-  color: var(--accent-blue);
+  font-family: 'Courier New', Courier, monospace;
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid #00ff41;
+  color: #00ff41;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
+  letter-spacing: 1px;
 }
 
-.btn-evidence:hover { background: rgba(31, 111, 235, 0.2); }
+.btn-evidence:hover { background: rgba(0, 255, 65, 0.16); box-shadow: 0 0 8px rgba(0, 255, 65, 0.3); }
 .btn-evidence.submitted { background: rgba(63, 185, 80, 0.1); border-color: var(--accent-green); color: var(--accent-green); }
 .btn-evidence.wrong { background: rgba(248, 81, 73, 0.1); border-color: var(--accent-red); color: var(--accent-red); }
 </style>

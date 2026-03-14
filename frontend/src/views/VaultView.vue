@@ -108,7 +108,7 @@ import { useGameStore } from '../stores/gameStore.js'
 const store = useGameStore()
 const passphrase = ref('')
 const attempting = ref(false)
-const solved = ref(store.isRoomComplete('vault'))
+const solved = ref(false)
 const feedback = ref('')
 const feedbackType = ref('error')
 const solveTime = ref(0)
@@ -153,6 +153,24 @@ async function submit() {
   height: 100%;
   padding: 32px;
   overflow-y: auto;
+  position: relative;
+  background: #0a0a0f;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.vault-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
 }
 
 /* Vault entry */
@@ -168,6 +186,7 @@ async function submit() {
 .vault-graphic {
   font-size: 64px;
   line-height: 1;
+  filter: drop-shadow(0 0 16px rgba(0, 255, 65, 0.4));
 }
 
 .vault-dial {
@@ -187,9 +206,10 @@ async function submit() {
   font-size: 28px;
   font-weight: 900;
   letter-spacing: 8px;
-  font-family: var(--font-mono);
-  color: var(--text-primary);
+  font-family: 'Courier New', Courier, monospace;
+  color: #00ff41;
   text-align: center;
+  text-shadow: 0 0 16px rgba(0, 255, 65, 0.5), 0 0 32px rgba(0, 255, 65, 0.2);
 }
 
 .vault-subtitle {
@@ -202,8 +222,8 @@ async function submit() {
 
 .clue-reminder {
   width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
+  background: rgba(0, 255, 65, 0.04);
+  border: 1px solid rgba(0, 255, 65, 0.2);
   border-radius: var(--radius);
   padding: 16px;
   max-height: 160px;
@@ -314,8 +334,9 @@ async function submit() {
 .hint-num {
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent-orange);
-  font-family: var(--font-mono);
+  color: #00ff41;
+  font-family: 'Courier New', Courier, monospace;
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.4);
 }
 
 .hint-room {

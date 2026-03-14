@@ -726,6 +726,25 @@ const filteredLogs = computed(() => {
     }
   }
 
+  // Histogram hour
+  if (activeHistogramHour.value !== null) {
+    result = result.filter(l => getHour(l) === activeHistogramHour.value)
+  }
+
+  // KQL + MiniSearch
+  const query = freeText.value.trim()
+  if (query && miniSearch) {
+    const { fieldClauses, freeText: searchText } = parseKQL(query)
+    result = applyFieldClauses(result, fieldClauses)
+    if (searchText) {
+      const hits = miniSearch.search(searchText)
+      const hitIds = new Set(hits.map(h => h.id))
+      result = result.filter(l => hitIds.has(l.id))
+      const scoreMap = new Map(hits.map(h => [h.id, h.score]))
+      result.sort((a, b) => (scoreMap.get(b.id) || 0) - (scoreMap.get(a.id) || 0))
+    }
+  }
+
   return result
 })
 
@@ -790,17 +809,17 @@ function getDefaultLogs() {
 
 <style scoped>
 .search-view {
-  /* Kibana EUI Light Theme */
-  --eui-empty: #FFFFFF;
-  --eui-lightest: #F5F7FA;
-  --eui-light: #D3DAE6;
-  --eui-medium: #98A2B3;
-  --eui-dark: #69707D;
-  --eui-darkest: #343741;
-  --eui-primary: #006BB4;
-  --eui-accent: #017D73;
-  --eui-warning: #F5A700;
-  --eui-danger: #BD271E;
+  /* Dark Mystery Theme */
+  --eui-empty: #0a0a0f;
+  --eui-lightest: #0d0d14;
+  --eui-light: #1e2530;
+  --eui-medium: #484f58;
+  --eui-dark: #8b949e;
+  --eui-darkest: #e6edf3;
+  --eui-primary: #1f6feb;
+  --eui-accent: #00ff41;
+  --eui-warning: #d29922;
+  --eui-danger: #f85149;
 
   display: grid;
   grid-template-columns: 220px 1fr;
@@ -808,7 +827,23 @@ function getDefaultLogs() {
   overflow: hidden;
   background: var(--eui-empty);
   color: var(--eui-darkest);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Courier New', Courier, monospace;
+  position: relative;
+}
+
+.search-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
 }
 
 .search-view * { color: inherit; }
@@ -827,15 +862,18 @@ function getDefaultLogs() {
   padding: 12px 16px;
   font-size: 15px;
   font-weight: 700;
-  color: var(--eui-darkest);
+  color: #00ff41;
   border-bottom: 1px solid var(--eui-light);
-  font-family: var(--font-mono);
+  font-family: 'Courier New', Courier, monospace;
   display: flex;
   align-items: center;
   gap: 6px;
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
-.logo-diamond { font-size: 10px; color: var(--eui-accent); }
+.logo-diamond { font-size: 10px; color: #00ff41; }
 
 .sidebar-section {
   padding: 4px 0;

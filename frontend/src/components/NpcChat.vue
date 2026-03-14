@@ -1,26 +1,26 @@
 <template>
-  <div :class="['npc-chat', { open: isOpen }]">
+  <div class="npc-chat-wrapper">
     <!-- Toggle button -->
-    <button class="npc-toggle" @click="isOpen = !isOpen">
-      <span class="npc-avatar">👤</span>
+    <button class="npc-toggle" @click="open = !open">
+      <span class="npc-avatar">{{ npcAvatar }}</span>
       <span class="npc-toggle-name">{{ npcName }}</span>
       <span class="npc-toggle-role">{{ npcRole }}</span>
-      <span class="toggle-arrow">{{ isOpen ? '▼' : '▲' }}</span>
+      <span class="toggle-arrow">{{ open ? '▼' : '▲' }}</span>
     </button>
 
-    <!-- Chat panel -->
-    <div v-if="isOpen" class="npc-panel">
+    <!-- Chat panel (pops up above the toggle) -->
+    <div v-if="open" class="npc-panel">
       <div class="npc-header">
         <div class="npc-info">
           <span class="npc-name">{{ npcName }}</span>
           <span class="npc-role-label">{{ npcRole }}</span>
         </div>
-        <button class="npc-close" @click="isOpen = false">✕</button>
+        <button class="npc-close" @click="open = false">✕</button>
       </div>
 
       <div class="npc-messages" ref="messagesEl">
         <div v-if="messages.length === 0" class="npc-intro">
-          <p>You can ask {{ npcName }} for information about this investigation.</p>
+          <p>Begin your interrogation. Be strategic — witnesses won't reveal everything.</p>
         </div>
         <div
           v-for="(msg, i) in messages"
@@ -35,14 +35,15 @@
       </div>
 
       <div class="npc-input-row">
-        <input
-          v-model="inputText"
+        <textarea
+          v-model="draft"
           class="npc-input"
           :placeholder="`Ask ${npcName}...`"
+          rows="2"
           :disabled="loading"
-          @keydown.enter="sendMessage"
+          @keydown.enter.exact.prevent="send"
         />
-        <button class="npc-send" :disabled="loading || !inputText.trim()" @click="sendMessage">
+        <button class="btn-primary npc-send" :disabled="loading || !draft.trim()" @click="send">
           Send
         </button>
       </div>
@@ -51,36 +52,49 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { useGameStore } from '../stores/gameStore.js'
 
 const props = defineProps({
   npcId: { type: String, required: true },
   npcName: { type: String, required: true },
-  npcRole: { type: String, default: '' },
+  npcRole: { type: String, required: true },
 })
 
 const store = useGameStore()
-const isOpen = ref(false)
-const inputText = ref('')
+const open = ref(false)
+const draft = ref('')
 const loading = ref(false)
 const messagesEl = ref(null)
 
+const npcAvatars = {
+  receptionist: '👩',
+  sysadmin: '🧑‍💻',
+  archivist: '📚',
+  cfo: '💼',
+  ceo: '👔',
+}
+const npcAvatar = computed(() => npcAvatars[props.npcId] || '🧑')
+
 const messages = computed(() => store.getNpcHistory(props.npcId))
 
-async function sendMessage() {
-  const text = inputText.value.trim()
-  if (!text || loading.value) return
-  inputText.value = ''
-  loading.value = true
-  try {
-    await store.sendNpcMessage(props.npcId, text)
+watch(
+  () => messages.value.length,
+  async () => {
     await nextTick()
     if (messagesEl.value) {
       messagesEl.value.scrollTop = messagesEl.value.scrollHeight
     }
-  } catch (e) {
-    store.addNpcMessage(props.npcId, 'assistant', 'Sorry, I\'m unable to respond right now.')
+  }
+)
+
+async function send() {
+  const text = draft.value.trim()
+  if (!text || loading.value) return
+  draft.value = ''
+  loading.value = true
+  try {
+    await store.sendNpcMessage(props.npcId, text)
   } finally {
     loading.value = false
   }
@@ -88,54 +102,54 @@ async function sendMessage() {
 </script>
 
 <style scoped>
-.npc-chat {
+.npc-chat-wrapper {
   position: fixed;
-  bottom: 36px;
+  bottom: 44px;
   left: 24px;
-  z-index: 1000;
+  z-index: 500;
   font-family: var(--font-mono);
 }
 
+/* Toggle button */
 .npc-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f5f5f5;
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-purple);
+  color: var(--text-primary);
   padding: 6px 12px;
   border-radius: var(--radius);
   cursor: pointer;
   font-size: 12px;
   font-family: var(--font-mono);
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), color var(--transition);
 }
 
-.npc-toggle:hover { border-color: #c9a24a; color: #fff9d4; }
+.npc-toggle:hover {
+  border-color: var(--accent-purple);
+  color: var(--text-primary);
+  opacity: 1;
+}
 
 .npc-avatar { font-size: 14px; }
-
 .npc-toggle-name { font-weight: 700; }
-
-.npc-toggle-role {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
+.npc-toggle-role { color: var(--text-muted); font-size: 11px; }
 .toggle-arrow { font-size: 10px; color: var(--text-muted); }
 
+/* Panel pops up above the toggle */
 .npc-panel {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 0;
-  width: 320px;
-  background: #1e1e1e;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  width: 340px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
-  max-height: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-height: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .npc-header {
@@ -143,14 +157,22 @@ async function sendMessage() {
   justify-content: space-between;
   align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .npc-info { display: flex; flex-direction: column; gap: 2px; }
 
-.npc-name { font-size: 13px; font-weight: 700; color: #fff8e5; }
+.npc-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
 
-.npc-role-label { font-size: 11px; color: #c9a24a; }
+.npc-role-label {
+  font-size: 11px;
+  color: var(--accent-purple);
+}
 
 .npc-close {
   background: transparent;
@@ -161,7 +183,7 @@ async function sendMessage() {
   padding: 2px 4px;
 }
 
-.npc-close:hover { color: var(--text-primary); }
+.npc-close:hover { color: var(--text-primary); opacity: 1; }
 
 .npc-messages {
   flex: 1;
@@ -173,10 +195,13 @@ async function sendMessage() {
   min-height: 120px;
 }
 
-.npc-intro { font-size: 12px; color: var(--text-muted); font-style: italic; }
+.npc-intro {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 .npc-msg { display: flex; }
-
 .msg-user { justify-content: flex-end; }
 .msg-npc { justify-content: flex-start; }
 
@@ -189,17 +214,18 @@ async function sendMessage() {
 }
 
 .msg-user .msg-bubble {
-  background: #3a3a3a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  background: rgba(31, 111, 235, 0.15);
+  border: 1px solid rgba(31, 111, 235, 0.3);
+  color: var(--text-primary);
 }
 
 .msg-npc .msg-bubble {
-  background: #2a2a2a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f0f0f0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 
+/* Typing dots */
 .npc-typing {
   display: flex;
   gap: 4px;
@@ -222,42 +248,26 @@ async function sendMessage() {
   50% { transform: translateY(-4px); opacity: 1; }
 }
 
+/* Input row */
 .npc-input-row {
   display: flex;
   gap: 8px;
   padding: 10px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: #121212;
-  border-radius: 0 0 var(--radius) var(--radius);
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .npc-input {
   flex: 1;
   font-family: var(--font-mono);
   font-size: 12px;
-  padding: 6px 10px;
-  background: #1b1b1b;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius);
-  color: #f5f5f5;
-  outline: none;
+  resize: none;
 }
-
-.npc-input:focus { border-color: #c9a24a; }
 
 .npc-send {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
-  font-family: var(--font-mono);
-  background: #c9a24a;
-  border: 1px solid #c9a24a;
-  color: #050505;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: transform 0.15s;
+  align-self: flex-end;
 }
-
-.npc-send:hover:not(:disabled) { transform: scale(1.02); }
-.npc-send:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

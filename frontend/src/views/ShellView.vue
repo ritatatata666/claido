@@ -27,16 +27,6 @@ let resizeObserver = null
 let cwd = '/home/analyst'
 let inputBuffer = ''
 let filesystem = null
-const hintsUsed = ref(0)
-
-// Command history
-const commandHistory = ref([])
-let historyIndex = -1
-const HINTS = [
-  'Hidden files start with a dot. Try: ls -a',
-  'Environment files store secrets. Try: cat .env',
-  'The VAULT_WORD is base64 encoded. Try: base64 -d <the_value>',
-]
 
 onMounted(async () => {
   // Restore shell history from store
@@ -47,7 +37,7 @@ onMounted(async () => {
   // Load room content
   try {
     const data = await store.enterRoom('shell')
-    filesystem = normalizeFilesystem(data)
+    filesystem = data
   } catch (e) {
     filesystem = getDefaultFilesystem()
   }
@@ -87,8 +77,10 @@ onMounted(async () => {
   writelnTerminal('')
   prompt()
 
-  term.onData(data => {
-    if (data === '\r') {
+  term.onKey(({ key, domEvent }) => {
+    const code = domEvent.keyCode
+
+    if (code === 13) {
       // Enter
       const cmd = inputBuffer.trim()
       writelnTerminal('')
@@ -100,17 +92,16 @@ onMounted(async () => {
       handleCommand(cmd)
       inputBuffer = ''
       prompt()
-    } else if (data === '\x7f' || data === '\b') {
+    } else if (code === 8) {
       // Backspace
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         writeTerminal('\b \b')
       }
-    } else if (data === '\x03') {
+    } else if (code === 67 && domEvent.ctrlKey) {
       // Ctrl+C
       writelnTerminal('^C')
       inputBuffer = ''
-      historyIndex = commandHistory.value.length
       prompt()
     } else if (data === '\x1b[A') {
       // Up arrow — previous command
@@ -194,7 +185,7 @@ function handleCommand(cmd) {
       break
 
     case 'ls':
-      cmdLs(args)
+      cmdLs(args[0])
       break
 
     case 'cat':
@@ -313,14 +304,8 @@ function resolvePath(p) {
   return `${cwd}/${p}`.replace('//', '/')
 }
 
-function cmdLs(rawArgs) {
-  // Separate flags (starting with -) from the path argument
-  const lsArgs = Array.isArray(rawArgs) ? rawArgs : (rawArgs ? [rawArgs] : [])
-  const flags = lsArgs.filter(a => a.startsWith('-')).join('')
-  const showHidden = flags.includes('a')
-  const pathArg = lsArgs.find(a => !a.startsWith('-'))
-
-  const path = resolvePath(pathArg)
+function cmdLs(arg) {
+  const path = resolvePath(arg)
   const dirs = filesystem?.dirs || []
   const files = filesystem?.files || {}
 
@@ -346,12 +331,11 @@ function cmdLs(rawArgs) {
     return
   }
 
-  const visible = showHidden ? children : children.filter(c => !c.name.startsWith('.'))
-
-  const dirNames  = visible.filter(c => c.type === 'dir').map(c => `\x1b[34m${c.name}/\x1b[0m`)
-  const fileNames = visible.filter(c => c.type === 'file').map(c =>
-    c.name.startsWith('.') ? `\x1b[90m${c.name}\x1b[0m` : c.name
-  )
+  const dirNames = children.filter(c => c.type === 'dir').map(c => `\x1b[34m${c.name}/\x1b[0m`)
+  const fileNames = children.filter(c => c.type === 'file').map(c => {
+    const hidden = c.name.startsWith('.')
+    return hidden ? `\x1b[90m${c.name}\x1b[0m` : c.name
+  })
 
   writelnTerminal([...dirNames, ...fileNames].join('  '))
 }

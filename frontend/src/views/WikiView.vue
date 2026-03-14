@@ -65,13 +65,6 @@
                 <div v-if="decodedContent[selectedPage.id]" class="decoded-block">
                   <div class="decoded-label">✓ Decoded:</div>
                   <div class="decoded-text">{{ decodedContent[selectedPage.id] }}</div>
-                  <div class="decoded-submit-row">
-                    <button class="submit-evidence-btn" @click="submitWikiClue(selectedPage)">
-                      ⚑ Submit as evidence
-                    </button>
-                    <span v-if="wikiSubmitResult[selectedPage.id] === 'correct'" class="submit-correct">✓ Evidence logged</span>
-                    <span v-else-if="wikiSubmitResult[selectedPage.id] === 'wrong'" class="submit-wrong">✗ No evidence found here.</span>
-                  </div>
                 </div>
               </div>
             </template>
@@ -95,7 +88,6 @@ const loading = ref(true)
 const selectedPage = ref(null)
 const searchTerm = ref('')
 const decodedContent = ref({})
-const wikiSubmitResult = ref({})
 
 onMounted(async () => {
   try {
@@ -138,22 +130,15 @@ function rot13(str) {
 function decodeRot13(page) {
   const decoded = rot13(page.redactedSection || '')
   decodedContent.value[page.id] = decoded
-}
 
-function submitWikiClue(page) {
-  const decoded = decodedContent.value[page.id]
-  if (!decoded) return
   const vaultWord = store.sessionState?.vaultWord3
   if (vaultWord && decoded.toLowerCase().includes(vaultWord.toLowerCase())) {
-    wikiSubmitResult.value[page.id] = 'correct'
     store.addClue(
       'wiki-vault-word',
       'NovaWiki',
       `ROT13 decoded text in "${page.title}" contains the keyword: "${vaultWord}".`
     )
     store.markRoomComplete('wiki')
-  } else {
-    wikiSubmitResult.value[page.id] = 'wrong'
   }
 }
 
@@ -192,26 +177,34 @@ function getDefaultPages() {
 </script>
 
 <style scoped>
-/* Wiki uses light mode */
 .wiki-view {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f4f5f7;
-  --text-primary: #172b4d;
-  --text-secondary: #42526e;
-  --text-muted: #6b778c;
-  --accent-blue: #0052cc;
-  --border-color: #dfe1e6;
-
   display: grid;
   grid-template-columns: 240px 1fr;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-primary);
+  background: #0a0a0f;
   color: var(--text-primary);
+  position: relative;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.wiki-view::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
 }
 
 .wiki-nav {
-  background: var(--bg-secondary);
+  background: #0d0d14;
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -222,8 +215,11 @@ function getDefaultPages() {
   padding: 16px;
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent-blue);
+  color: #00ff41;
   border-bottom: 1px solid var(--border-color);
+  text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .nav-search {
@@ -233,9 +229,6 @@ function getDefaultPages() {
 
 .nav-search input {
   width: 100%;
-  background: #fff;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
   font-size: 13px;
   padding: 6px 10px;
 }
@@ -265,15 +258,15 @@ function getDefaultPages() {
 }
 
 .nav-item:hover {
-  background: rgba(0, 82, 204, 0.08);
-  color: var(--accent-blue);
+  background: rgba(0, 255, 65, 0.05);
+  color: var(--text-primary);
 }
 
 .nav-item.active {
-  background: rgba(0, 82, 204, 0.12);
-  color: var(--accent-blue);
+  background: rgba(0, 255, 65, 0.08);
+  color: #00ff41;
   font-weight: 600;
-  border-left: 3px solid var(--accent-blue);
+  border-left: 3px solid #00ff41;
 }
 
 /* Wiki main */
@@ -309,7 +302,8 @@ function getDefaultPages() {
 
 .wiki-welcome h1 {
   font-size: 32px;
-  color: var(--accent-blue);
+  color: #00ff41;
+  text-shadow: 0 0 12px rgba(0, 255, 65, 0.4);
   margin-bottom: 12px;
 }
 
@@ -358,7 +352,7 @@ function getDefaultPages() {
 .page-content :deep(h3) {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   margin: 16px 0 8px;
 }
 
@@ -368,16 +362,16 @@ function getDefaultPages() {
 
 .redacted-section {
   margin-top: 24px;
-  border: 2px dashed #d4a017;
+  border: 2px dashed var(--accent-orange);
   border-radius: var(--radius);
   padding: 16px;
-  background: #fff9e6;
+  background: rgba(210, 153, 34, 0.06);
 }
 
 .redacted-label {
   font-size: 12px;
   font-weight: 700;
-  color: #b8860b;
+  color: var(--accent-orange);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 12px;
@@ -393,16 +387,17 @@ function getDefaultPages() {
   flex: 1;
   font-family: var(--font-mono);
   font-size: 13px;
-  color: #6b778c;
+  color: var(--text-muted);
   word-break: break-all;
   line-height: 1.6;
-  background: #f0e6c8;
+  background: var(--bg-surface);
   padding: 10px;
   border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
 .decode-btn {
-  background: #d4a017;
+  background: var(--accent-orange);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
@@ -414,9 +409,9 @@ function getDefaultPages() {
 .decoded-block {
   margin-top: 12px;
   padding: 12px;
-  background: #e6f3ff;
+  background: rgba(31, 111, 235, 0.08);
   border-radius: 4px;
-  border: 1px solid #b3d4ff;
+  border: 1px solid rgba(31, 111, 235, 0.2);
 }
 
 .decoded-label {
@@ -432,43 +427,5 @@ function getDefaultPages() {
   font-size: 13px;
   color: var(--text-primary);
   line-height: 1.6;
-}
-
-.decoded-submit-row {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.submit-evidence-btn {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  padding: 5px 14px;
-  background: rgba(0, 82, 204, 0.1);
-  border: 1px solid var(--accent-blue);
-  color: var(--accent-blue);
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.submit-evidence-btn:hover {
-  background: rgba(0, 82, 204, 0.2);
-}
-
-.submit-correct {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: #2a7d2a;
-}
-
-.submit-wrong {
-  font-size: 12px;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: #b33030;
 }
 </style>
