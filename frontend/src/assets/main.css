@@ -34,9 +34,9 @@ html, body, #app {
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(255, 244, 220, 0.28), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(120, 70, 36, 0.18), transparent 24%),
-    linear-gradient(180deg, #c79768 0%, #b98558 100%);
+    radial-gradient(circle at top left, rgba(139, 0, 0, 0.15), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(139, 90, 60, 0.25), transparent 24%),
+    linear-gradient(180deg, #8B5A3C 0%, #654029 50%, #4a2f1d 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -46,19 +46,63 @@ body {
   position: relative;
 }
 
-body::before {
-  content: '';
+/* Global Blood Splatter Effects */
+/* ── Blood Splatter ── */
+.blood-splatter-global {
   position: fixed;
-  inset: 0;
   pointer-events: none;
-  background:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 9px),
-    repeating-linear-gradient(90deg, rgba(88, 53, 29, 0.03) 0 3px, transparent 3px 11px),
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.18), transparent 16%),
-    radial-gradient(circle at 80% 70%, rgba(133, 77, 42, 0.18), transparent 18%);
-  mix-blend-mode: multiply;
-  opacity: 0.65;
-  z-index: 0;
+  z-index: 2;
+  opacity: 0.8;
+}
+
+/* On hub page: splatters on top, not scrollable */
+.is-hub .blood-splatter-global {
+  z-index: 9999;
+}
+
+.blood-splatter-global img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.blood-splatter-global--1 {
+  top: 2%;
+  left: 1%;
+  width: 200px;
+  height: 180px;
+}
+
+.blood-splatter-global--2 {
+  top: 15%;
+  right: 2%;
+  width: 180px;
+  height: 160px;
+  transform: rotate(45deg);
+}
+
+.blood-splatter-global--3 {
+  bottom: 5%;
+  left: 3%;
+  width: 190px;
+  height: 170px;
+  transform: rotate(-30deg);
+}
+
+.blood-splatter-global--4 {
+  bottom: 10%;
+  right: 5%;
+  width: 160px;
+  height: 150px;
+  transform: rotate(120deg);
+}
+
+.blood-splatter-global--5 {
+  top: 50%;
+  left: 40%;
+  width: 170px;
+  height: 150px;
+  transform: rotate(70deg) scaleX(-1);
 }
 
 a {

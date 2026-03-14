@@ -159,13 +159,13 @@
       <div class="board-overlay" aria-hidden="true">
         <span class="overlay-thread overlay-thread--one"></span>
         <span class="overlay-thread overlay-thread--two"></span>
-        <span class="overlay-thread overlay-thread--three"></span>
+        <span class="overlay-thread overlay-thread--three vertical-line"></span>
         <span class="overlay-thread overlay-thread--four"></span>
         <span class="overlay-thread overlay-thread--five"></span>
         <span class="overlay-thread overlay-thread--six"></span>
-        <span class="overlay-thread overlay-thread--seven"></span>
+        <span class="overlay-thread overlay-thread--seven vertical-line"></span>
         <span class="overlay-thread overlay-thread--eight"></span>
-        <span class="overlay-thread overlay-thread--nine"></span>
+        <span class="overlay-thread overlay-thread--nine vertical-line"></span>
 
       </div>
     </div>
@@ -298,26 +298,33 @@ const formattedTime = computed(() => {
 <style scoped>
 .hub {
   min-height: 100vh;
-  padding: 30px 24px 40px;
+  padding: 20px 16px 30px;
   overflow-y: auto;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.015) 0px,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 8px
+    ),
+    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
 }
 
 .hub-board {
   position: relative;
-  width: min(1180px, 100%);
-  margin: 0 auto 0 -50px;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.hub-board {
-  position: relative;
-  width: min(1180px, 100%);
+  width: min(1000px, 96%);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
 }
 
 .board-overlay {
@@ -336,26 +343,26 @@ const formattedTime = computed(() => {
 
 .corner-prop--left-top {
   top: 66px;
-  left: -144px;
-  transform: rotate(-3deg);
+  left: -120px;
+  transform: rotate(-3deg) scale(0.9);
 }
 
 .corner-prop--left-bottom {
   top: 512px;
-  left: -134px;
-  transform: rotate(-12deg);
+  left: -110px;
+  transform: rotate(-12deg) scale(0.9);
 }
 
 .corner-prop--right-top {
   top: 178px;
-  right: -160px;
-  transform: rotate(6deg);
+  right: -130px;
+  transform: rotate(6deg) scale(0.9);
 }
 
 .corner-prop--right-bottom {
   top: 566px;
-  right: -144px;
-  transform: rotate(-2deg);
+  right: -120px;
+  transform: rotate(-2deg) scale(0.9);
 }
 
 .corner-prop--center-left {
@@ -591,13 +598,23 @@ const formattedTime = computed(() => {
 
 .overlay-thread {
   position: absolute;
-  height: 2px;
-  border-radius: 1px;
   background: #c52227;
-  box-shadow: 0 1px 3px rgba(102, 17, 20, 0.3);
+  box-shadow: 0 1px 4px rgba(102, 17, 20, 0.4);
   pointer-events: none;
   z-index: 8;
-  opacity: 0.95;
+  opacity: 1;
+}
+
+/* Horizontal lines */
+.overlay-thread:not(.vertical-line) {
+  height: 3px;
+  border-radius: 1px;
+}
+
+/* Vertical lines */
+.overlay-thread.vertical-line {
+  width: 3px;
+  border-radius: 1px;
 }
 
 .overlay-thread::before,
@@ -621,70 +638,69 @@ const formattedTime = computed(() => {
 }
 
 .overlay-thread--one {
-  top: 150px;
-  left: 15%;
-  width: 380px;
-  transform: rotate(8deg);
+  top: 140px;
+  left: 5%;
+  width: 300px;
+  transform: rotate(25deg);
 }
 
 .overlay-thread--two {
   top: 180px;
-  left: 50%;
+  left: 45%;
+  width: 250px;
+  transform: rotate(-15deg);
+}
+
+.overlay-thread--three {
+  top: 320px;
+  left: 25%;
+  height: 180px;
+}
+
+.overlay-thread--four {
+  top: 380px;
+  left: 10%;
+  width: 320px;
+  transform: rotate(8deg);
+}
+
+.overlay-thread--five {
+  top: 460px;
+  left: 55%;
+  width: 280px;
+  transform: rotate(-20deg);
+}
+
+.overlay-thread--six {
+  top: 520px;
+  left: 15%;
+  width: 400px;
+  transform: rotate(12deg);
+}
+
+.overlay-thread--seven {
+  top: 280px;
+  left: 70%;
+  height: 220px;
+}
+
+.overlay-thread--eight {
+  top: 600px;
+  left: 30%;
   width: 350px;
   transform: rotate(-8deg);
 }
 
-.overlay-thread--three {
-  top: 370px;
-  left: 35%;
-  width: 150px;
-  transform: rotate(90deg);
-}
-
-.overlay-thread--four {
-  top: 420px;
-  left: 15%;
-  width: 350px;
-  transform: rotate(2deg);
-}
-
-.overlay-thread--five {
-  top: 500px;
-  left: 15%;
-  width: 350px;
-  transform: rotate(2deg);
-}
-
-.overlay-thread--six {
-  top: 420px;
-  right: 15%;
-  width: 350px;
-  transform: rotate(-2deg);
-}
-
-.overlay-thread--seven {
-  top: 500px;
-  right: 15%;
-  width: 350px;
-  transform: rotate(-2deg);
-}
-
-.overlay-thread--eight {
-  bottom: 100px;
-  left: 20%;
-  width: 400px;
-  transform: rotate(-5deg);
-}
-
 .overlay-thread--nine {
-  top: 350px;
-  right: 5%;
-  width: 250px;
+  top: 220px;
+  left: 35%;
+  width: 180px;
   transform: rotate(45deg);
 }
 
 .hub-topbar.evidence-strip {
-  left: 22px;
+  position: relative;
+  left: 0;
 }
 
 .overlay-pin--db {

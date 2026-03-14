@@ -1,5 +1,12 @@
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'is-hub': isHub }">
+    <!-- Blood Splatter Effects -->
+    <div class="blood-splatter-global blood-splatter-global--1" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
+    <div class="blood-splatter-global blood-splatter-global--2" aria-hidden="true"><img :src="bloodSplatter2" alt="" /></div>
+    <div class="blood-splatter-global blood-splatter-global--3" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
+    <div class="blood-splatter-global blood-splatter-global--4" aria-hidden="true"><img :src="bloodSplatter2" alt="" /></div>
+    <div class="blood-splatter-global blood-splatter-global--5" aria-hidden="true"><img :src="bloodSplatter1" alt="" /></div>
+
     <div class="app-shell__board" aria-hidden="true">
       <span class="thread thread--one"></span>
       <span class="thread thread--two"></span>
@@ -17,8 +24,14 @@
 </template>
 
 <script setup>
-import { RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 import ClueNotification from './components/ClueNotification.vue'
+import bloodSplatter1 from '../images/bloodSplatter1.png'
+import bloodSplatter2 from '../images/bloodSplatter2.png'
+
+const route = useRoute()
+const isHub = computed(() => route.path === '/hub')
 </script>
 
 <style scoped>
