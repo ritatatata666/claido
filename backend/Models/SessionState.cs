@@ -29,6 +29,7 @@ public class ClaudeGeneratedSession
     public string CulpritName { get; set; } = "";
     public string CulpritDepartment { get; set; } = "";
     public string CulpritRole { get; set; } = "";
+    public int CulpritId { get; set; } = 1001;
     public string Motive { get; set; } = "";
     public string IncidentTime { get; set; } = "";
     public string IncidentDate { get; set; } = "";

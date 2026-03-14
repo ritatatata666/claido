@@ -7,9 +7,6 @@ export default defineConfig({
     vue(),
     nodePolyfills(),
   ],
-  optimizeDeps: {
-    exclude: ['sql.js'],
-  },
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

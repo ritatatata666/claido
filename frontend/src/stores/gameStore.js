@@ -2,16 +2,41 @@ import { defineStore } from 'pinia'
 
 const API = import.meta.env.VITE_API_BASE_URL
 
+const STORAGE_KEY = 'claido_session'
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch { return {} }
+}
+
+function persistState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      sessionId: state.sessionId,
+      sessionState: state.sessionState,
+      discoveredClues: state.discoveredClues,
+      completedRooms: state.completedRooms,
+      conversationHistories: state.conversationHistories,
+      gameStartTime: state.gameStartTime,
+    }))
+  } catch {}
+}
+
+const _persisted = loadPersistedState()
+
 export const useGameStore = defineStore('game', {
   state: () => ({
-    sessionId: null,
-    sessionState: null,
+    sessionId: _persisted.sessionId ?? null,
+    sessionState: _persisted.sessionState ?? null,
     currentRoom: null,
-    discoveredClues: [],        // [{ id, room, text, timestamp }]
-    conversationHistories: {},  // npcId -> [{ role, content }]
-    completedRooms: [],         // ['shell', 'mail', ...]
-    gameStartTime: null,
-    clueNotification: null,     // { text, room } — cleared after showing
+    discoveredClues: _persisted.discoveredClues ?? [],
+    conversationHistories: _persisted.conversationHistories ?? {},
+    completedRooms: _persisted.completedRooms ?? [],
+    gameStartTime: _persisted.gameStartTime ?? null,
+    clueNotification: null,
+    roomCache: {},
   }),
 
   getters: {
@@ -30,6 +55,11 @@ export const useGameStore = defineStore('game', {
       this.sessionId = data.sessionId
       this.sessionState = data
       this.gameStartTime = Date.now()
+      this.discoveredClues = []
+      this.completedRooms = []
+      this.conversationHistories = {}
+      this.roomCache = {}
+      persistState(this)
       return data
     },
 
@@ -39,6 +69,7 @@ export const useGameStore = defineStore('game', {
       this.discoveredClues.push(clue)
       this.clueNotification = { text, room }
       setTimeout(() => { this.clueNotification = null }, 3500)
+      persistState(this)
     },
 
     clearNotification() {
@@ -48,6 +79,7 @@ export const useGameStore = defineStore('game', {
     markRoomComplete(room) {
       if (!this.completedRooms.includes(room)) {
         this.completedRooms.push(room)
+        persistState(this)
       }
     },
 
@@ -56,6 +88,7 @@ export const useGameStore = defineStore('game', {
         this.conversationHistories[npcId] = []
       }
       this.conversationHistories[npcId].push({ role, content })
+      persistState(this)
     },
 
     getNpcHistory(npcId) {
@@ -81,11 +114,17 @@ export const useGameStore = defineStore('game', {
     },
 
     async enterRoom(roomName) {
+      if (this.roomCache[roomName]) {
+        return this.roomCache[roomName]
+      }
       const res = await fetch(`${API}/api/session/${this.sessionId}/room/${roomName}/enter`, {
         method: 'POST',
       })
+      if (res.status === 404) throw new Error('Session expired — please start a new game.')
       if (!res.ok) throw new Error(`Failed to enter room: ${roomName}`)
-      return res.json()
+      const data = await res.json()
+      this.roomCache[roomName] = data
+      return data
     },
 
     async validateAnswer(roomName, answer) {

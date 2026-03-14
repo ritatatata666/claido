@@ -68,6 +68,25 @@
             </table>
           </div>
         </div>
+
+        <div class="flag-panel card">
+          <div class="flag-header">Submit Flag</div>
+          <div class="flag-body">
+            <input
+              v-model="flagInput"
+              class="flag-input"
+              placeholder="Enter the culprit's employee ID..."
+              @keydown.enter="submitFlag"
+            />
+            <button class="btn-primary flag-btn" @click="submitFlag">Submit Flag</button>
+          </div>
+          <div v-if="flagResult === 'correct'" class="flag-result flag-correct">
+            ✓ Correct! Flag accepted.
+          </div>
+          <div v-else-if="flagResult === 'wrong'" class="flag-result flag-wrong">
+            ✗ Incorrect employee ID.
+          </div>
+        </div>
       </div>
     </div>
     <NpcChat npc-id="archivist" npc-name="Dr. Patricia Wells" npc-role="Corporate Archivist" />
@@ -90,14 +109,26 @@ const loadingDb = ref(true)
 const db = ref(null)
 const tables = ref(['employees', 'access_logs', 'incidents', 'messages'])
 const activeTable = ref('')
+const flagInput = ref('')
+const flagResult = ref(null)
+
+function loadSqlJs() {
+  return new Promise((resolve, reject) => {
+    if (window.initSqlJs) { resolve(window.initSqlJs); return }
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js'
+    script.onload = () => resolve(window.initSqlJs)
+    script.onerror = () => reject(new Error('Failed to load sql.js from CDN'))
+    document.head.appendChild(script)
+  })
+}
 
 onMounted(async () => {
   try {
     const data = await store.enterRoom('database')
     const bytes = Uint8Array.from(atob(data.dbBase64), c => c.charCodeAt(0))
 
-    // Dynamically load sql.js
-    const initSqlJs = (await import('sql.js')).default
+    const initSqlJs = await loadSqlJs()
     const SQL = await initSqlJs({
       locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/${file}`,
     })
@@ -113,7 +144,6 @@ onMounted(async () => {
 function quickQuery(table) {
   activeTable.value = table
   sqlInput.value = `SELECT * FROM ${table} LIMIT 50;`
-  runQuery()
 }
 
 function runQuery() {
@@ -134,9 +164,6 @@ function runQuery() {
 
     const { columns, values } = res[0]
     results.value = { columns, rows: values }
-
-    // Check if culprit is visible in results
-    checkForClue(columns, values)
   } catch (e) {
     queryError.value = e.message
   } finally {
@@ -144,23 +171,22 @@ function runQuery() {
   }
 }
 
-function checkForClue(columns, values) {
+function submitFlag() {
   const culpritId = store.sessionState?.culprit?.id
-  if (!culpritId) return
-
-  const flat = values.flat().map(String)
-  if (flat.includes(String(culpritId))) {
-    const idCol = columns.findIndex(c =>
-      c === 'id' || c === 'employee_id' || c === 'related_employee_id'
+  if (!culpritId) {
+    flagResult.value = 'wrong'
+    return
+  }
+  if (flagInput.value.trim() === String(culpritId)) {
+    flagResult.value = 'correct'
+    store.addClue(
+      'db-culprit-found',
+      'NovaCrime DB',
+      `Confirmed culprit: Employee ID ${culpritId} identified from database investigation.`
     )
-    if (idCol >= 0) {
-      store.addClue(
-        'db-culprit-found',
-        'NovaCrime DB',
-        `Employee ID ${culpritId} appears in query results — cross-reference with incident logs.`
-      )
-      store.markRoomComplete('database')
-    }
+    store.markRoomComplete('database')
+  } else {
+    flagResult.value = 'wrong'
   }
 }
 
@@ -389,5 +415,65 @@ tbody tr:nth-child(even) td {
 .row-highlight td {
   background: rgba(248, 81, 73, 0.08) !important;
   color: var(--accent-red) !important;
+}
+
+.flag-panel {
+  flex-shrink: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.flag-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.flag-body {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.flag-input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 7px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.flag-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.flag-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.flag-result {
+  padding: 8px 14px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.flag-correct {
+  color: #3fb950;
+}
+
+.flag-wrong {
+  color: var(--accent-red);
 }
 </style>

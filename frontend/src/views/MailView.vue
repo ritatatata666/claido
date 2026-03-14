@@ -29,7 +29,14 @@
           :class="['email-row', { unread: !email.isRead, selected: selectedEmail?.id === email.id }]"
           @click="selectEmail(email)"
         >
-          <div class="email-from">{{ email.from }}</div>
+          <div class="email-row-top">
+            <div class="email-from">{{ email.from }}</div>
+            <button
+              :class="['flag-btn', { flagged: email.isFlagged }]"
+              :title="email.isFlagged ? 'Unflag' : 'Flag'"
+              @click.stop="toggleFlag(email)"
+            >🚩</button>
+          </div>
           <div class="email-subject">{{ email.subject }}</div>
           <div class="email-snippet">{{ snippetText(email.body) }}</div>
           <div class="email-date">{{ formatDate(email.date) }}</div>
@@ -79,7 +86,8 @@ const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
 onMounted(async () => {
   try {
     const data = await store.enterRoom('mail')
-    emails.value = Array.isArray(data) ? data : []
+    const raw = Array.isArray(data) ? data : []
+    emails.value = raw.map(e => ({ ...e, isFlagged: false }))
   } catch (e) {
     emails.value = getDefaultEmails()
   } finally {
@@ -87,11 +95,13 @@ onMounted(async () => {
   }
 })
 
-const filteredEmails = computed(() =>
-  emails.value.filter(e => e.folder === activeFolder.value || activeFolder.value === 'flagged')
-)
+const filteredEmails = computed(() => {
+  if (activeFolder.value === 'flagged') return emails.value.filter(e => e.isFlagged)
+  return emails.value.filter(e => e.folder === activeFolder.value)
+})
 
 function countFolder(folder) {
+  if (folder === 'flagged') return emails.value.filter(e => e.isFlagged).length
   return emails.value.filter(e => e.folder === folder).length
 }
 
@@ -103,6 +113,10 @@ function selectEmail(email) {
   email.isRead = true
   selectedEmail.value = email
   checkForClue(email)
+}
+
+function toggleFlag(email) {
+  email.isFlagged = !email.isFlagged
 }
 
 function checkForClue(email) {
@@ -139,6 +153,7 @@ function getDefaultEmails() {
       body: 'The board has approved the midnight handover. Do not document this in the usual channels.',
       isRead: false,
       folder: 'inbox',
+      isFlagged: false,
     },
     {
       id: 'msg-002',
@@ -149,6 +164,7 @@ function getDefaultEmails() {
       body: 'Everything is ready for midnight. Come alone. The word you need is "midnight". Delete this.',
       isRead: false,
       folder: 'inbox',
+      isFlagged: false,
     },
     {
       id: 'msg-003',
@@ -159,6 +175,7 @@ function getDefaultEmails() {
       body: 'All employees must complete the security awareness training by end of month.',
       isRead: true,
       folder: 'inbox',
+      isFlagged: false,
     },
   ]
 }
@@ -272,13 +289,40 @@ function getDefaultEmails() {
   color: var(--text-primary);
 }
 
+.email-row-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.flag-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.3;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.flag-btn:hover {
+  opacity: 0.7;
+}
+
+.flag-btn.flagged {
+  opacity: 1;
+}
+
 .email-from {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
 }
 
 .email-subject {
