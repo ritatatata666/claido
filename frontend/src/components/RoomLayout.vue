@@ -62,7 +62,15 @@
             class="clue-item"
           >
             <span class="clue-room">{{ clue.room }}</span>
-            <p class="clue-text">{{ clue.text }}</p>
+            <p
+              class="clue-text"
+              :class="{ 'clue-text--masked': clue.locked && isMaskedView }"
+            >
+              <span v-if="clue.locked && isMaskedView">
+                Clue hidden by the saboteur — use the Team Mode console to expose it.
+              </span>
+              <span v-else>{{ clue.text }}</span>
+            </p>
           </div>
         </div>
       </aside>
@@ -142,6 +150,7 @@ const sidebarCollapsed = ref(false)
 const menuOpen = ref(false)
 const goalsOpen = ref(false)
 const helpOpen = ref(false)
+const isMaskedView = computed(() => store.teamMode === 'team' && store.teamRole === 'good')
 
 const rooms = [
   { id: 'shell', label: 'NovaShell' },
@@ -594,6 +603,17 @@ const formattedTime = computed(() => {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
+}
+
+.clue-text--masked {
+  color: #9ea0b5;
+  font-style: italic;
+}
+
+/*Progress Bar*/
+.clue-text--masked {
+  color: #9ea0b5;
+  font-style: italic;
 }
 
 .progress-bar {

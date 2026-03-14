@@ -9,14 +9,14 @@ namespace Claido.Controllers;
 [Route("api/session")]
 public class SessionController : ControllerBase
 {
-    private readonly AiService _claude;
+    private readonly SessionCreator _sessionCreator;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
 
     public SessionController(
-        AiService claude,
+        SessionCreator sessionCreator,
         ConcurrentDictionary<Guid, SessionState> sessions)
     {
-        _claude = claude;
+        _sessionCreator = sessionCreator;
         _sessions = sessions;
     }
 
@@ -25,36 +25,14 @@ public class SessionController : ControllerBase
     {
         try
         {
-            var generated = await _claude.GenerateSessionAsync();
-
-            var culprit = generated.Employees.FirstOrDefault(e =>
-                              e.Name.Equals(generated.CulpritName, StringComparison.OrdinalIgnoreCase))
-                          ?? generated.Employees.FirstOrDefault()
-                          ?? new Employee { Name = generated.CulpritName, Department = generated.CulpritDepartment, Role = generated.CulpritRole };
-
-            culprit.Name = generated.CulpritName;
-            culprit.Department = generated.CulpritDepartment;
-            culprit.Role = generated.CulpritRole;
-
-            var session = new SessionState
-            {
-                Culprit = culprit,
-                Employees = generated.Employees,
-                IncidentTimestamp = $"{generated.IncidentDate}T{generated.IncidentTime}:00",
-                BadgeDiscrepancy = generated.BadgeDiscrepancy,
-                Motive = generated.Motive,
-                VaultWord1 = generated.VaultWord1.ToLower(),
-                VaultWord2 = generated.VaultWord2.ToLower(),
-                VaultWord3 = generated.VaultWord3.ToLower(),
-                VaultWord4 = generated.VaultWord4.ToLower()
-            };
-
+            var session = await _sessionCreator.CreateSessionAsync();
             _sessions[session.SessionId] = session;
 
+            return Ok(SessionResponder.Build(session));
             return Ok(new
             {
                 sessionId = session.SessionId,
-                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department },
+                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                
                 employees = session.Employees,
                 incidentTimestamp = session.IncidentTimestamp,
                 badgeDiscrepancy = session.BadgeDiscrepancy,
