@@ -276,7 +276,6 @@ const visibleColumns = ref(['timestamp', 'level', 'service', 'user', 'message'])
 const showColumnPicker = ref(false)
 const searchInputEl = ref(null)
 
-// Autocomplete state
 const showAutocomplete = ref(false)
 const autocompleteIndex = ref(-1)
 
@@ -403,7 +402,6 @@ function cellClass(col) {
   }[col] || ''
 }
 
-// --- Column toggle ---
 function toggleColumn(col) {
   const idx = visibleColumns.value.indexOf(col)
   if (idx >= 0) {
@@ -413,7 +411,6 @@ function toggleColumn(col) {
   }
 }
 
-// --- Field sidebar ---
 function getFieldUniqueCount(fieldName) {
   const set = new Set()
   for (const log of logs.value) set.add(log[fieldName])
@@ -449,7 +446,6 @@ function getValueSuggestions(fieldName, partial = '') {
     .slice(0, 50)
 }
 
-// --- Filter pills ---
 function addPill(field, value, negated = false) {
   if (filterPills.value.some(p => p.field === field && p.value === value && p.negated === negated)) return
   filterPills.value.push({ id: ++pillIdCounter, field, value, negated, enabled: true })
@@ -469,12 +465,10 @@ function togglePillNegate(id) {
   if (pill) pill.negated = !pill.negated
 }
 
-// --- Copy ---
 function copyValue(val) {
   navigator.clipboard?.writeText(val)
 }
 
-// --- Expand ---
 function toggleExpand(logId) {
   if (expandedLogId.value === logId) {
     expandedLogId.value = null
@@ -484,7 +478,6 @@ function toggleExpand(logId) {
   }
 }
 
-// --- Autocomplete ---
 function getValueSuggestionContext(input) {
   const tokens = input.split(/\s+/)
   const lastToken = tokens[tokens.length - 1] || ''
@@ -522,7 +515,6 @@ const acSectionLabel = computed(() => {
 
 const autocompleteSuggestions = computed(() => {
   const input = freeText.value
-  // On empty input show all field suggestions
   if (!input) {
     return fieldMeta.map(f => ({
       label: f.name,
@@ -574,7 +566,6 @@ const autocompleteSuggestions = computed(() => {
   }
 
   if (!lastToken) {
-    // After a space, suggest operators and fields
     return [
       { label: 'AND', replaceToken: 'AND ', icon: '⊕', type: 'operator', count: null },
       { label: 'OR', replaceToken: 'OR ', icon: '⊕', type: 'operator', count: null },
@@ -589,7 +580,6 @@ const autocompleteSuggestions = computed(() => {
     ]
   }
 
-  // Check for operator prefix
   const lower = lastToken.toLowerCase()
   const operators = ['AND', 'OR', 'NOT'].filter(op => op.toLowerCase().startsWith(lower) && op.toLowerCase() !== lower)
   const fields = fieldMeta.filter(f => f.name.startsWith(lower))
@@ -670,7 +660,6 @@ function hideAutocompleteDelayed() {
   setTimeout(() => { showAutocomplete.value = false }, 150)
 }
 
-// --- Core filtering ---
 onMounted(async () => {
   try {
     const data = await store.enterRoom('search')
@@ -702,7 +691,6 @@ const histogramData = computed(() => {
 const filteredLogs = computed(() => {
   let result = [...logs.value]
 
-  // Filter pills (AND logic)
   for (const pill of filterPills.value) {
     if (!pill.enabled) continue
     const val = pill.value.toLowerCase()
@@ -713,7 +701,6 @@ const filteredLogs = computed(() => {
     }
   }
 
-  // Time range
   if (timeRange.value === 'incident') {
     result = result.filter(l => { const h = getHour(l); return h >= 0 && h < 3 })
   } else if (timeRange.value === 'day') {
@@ -1455,16 +1442,13 @@ function getDefaultLogs() {
 
 .expanded-tabs {
   display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--eui-light);
-  margin-bottom: 6px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.etab {
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 6px 14px;
+.detail-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--eui-dark);

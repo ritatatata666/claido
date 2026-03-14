@@ -11,7 +11,11 @@ public static class DatabaseService
         try
         {
             File.Delete(dbPath);
-            var connStr = $"Data Source={dbPath}";
+            var connStr = new SqliteConnectionStringBuilder
+            {
+                DataSource = dbPath,
+                Pooling = false
+            }.ToString();
             using (var conn = new SqliteConnection(connStr))
             {
                 conn.Open();
@@ -184,7 +188,36 @@ public static class DatabaseService
         }
         finally
         {
-            if (File.Exists(dbPath)) File.Delete(dbPath);
+            // Ensure no pooled SQLite handle keeps temp files locked on Windows.
+            SqliteConnection.ClearAllPools();
+            TryDeleteSqliteFiles(dbPath);
+        }
+    }
+
+    private static void TryDeleteSqliteFiles(string dbPath)
+    {
+        var paths = new[] { dbPath, $"{dbPath}-wal", $"{dbPath}-shm" };
+
+        foreach (var path in paths)
+        {
+            if (!File.Exists(path)) continue;
+
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    File.Delete(path);
+                    break;
+                }
+                catch (IOException) when (attempt < 2)
+                {
+                    Thread.Sleep(25);
+                }
+                catch (UnauthorizedAccessException) when (attempt < 2)
+                {
+                    Thread.Sleep(25);
+                }
+            }
         }
     }
 }

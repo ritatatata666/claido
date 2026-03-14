@@ -60,7 +60,6 @@
                 <tr
                   v-for="(row, i) in results.rows"
                   :key="i"
-                  :class="{ 'row-highlight': isSuspicious(row) }"
                 >
                   <td v-for="(cell, j) in row" :key="j">{{ cell }}</td>
                 </tr>
@@ -190,11 +189,6 @@ function submitFlag() {
   }
 }
 
-function isSuspicious(row) {
-  const culpritId = store.sessionState?.culprit?.id
-  if (!culpritId) return false
-  return row.some(cell => String(cell) === String(culpritId))
-}
 </script>
 
 <style scoped>
@@ -410,11 +404,6 @@ tbody tr:hover td {
 
 tbody tr:nth-child(even) td {
   background: rgba(255, 255, 255, 0.015);
-}
-
-.row-highlight td {
-  background: rgba(248, 81, 73, 0.08) !important;
-  color: var(--accent-red) !important;
 }
 
 .flag-panel {

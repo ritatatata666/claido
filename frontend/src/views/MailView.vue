@@ -61,6 +61,17 @@
             </div>
           </div>
           <div class="email-body">{{ selectedEmail.body }}</div>
+          <div class="email-actions">
+            <button
+              class="btn-evidence"
+              :class="{ submitted: evidenceResult === 'correct', wrong: evidenceResult === 'wrong' }"
+              @click="submitEvidence(selectedEmail)"
+            >
+              <span v-if="evidenceResult === 'correct'">✓ Evidence logged</span>
+              <span v-else-if="evidenceResult === 'wrong'">✗ Nothing suspicious</span>
+              <span v-else>⚑ Submit as evidence</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -69,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import RoomLayout from '../components/RoomLayout.vue'
 import NpcChat from '../components/NpcChat.vue'
 import { useGameStore } from '../stores/gameStore.js'
@@ -79,6 +90,7 @@ const emails = ref([])
 const loading = ref(true)
 const selectedEmail = ref(null)
 const activeFolder = ref('inbox')
+const evidenceResult = ref(null)
 
 const folders = ['inbox', 'sent', 'flagged']
 const folderIcons = { inbox: '📥', sent: '📤', flagged: '🚩' }
@@ -112,22 +124,25 @@ function snippetText(body) {
 function selectEmail(email) {
   email.isRead = true
   selectedEmail.value = email
-  checkForClue(email)
+  evidenceResult.value = null
 }
 
 function toggleFlag(email) {
   email.isFlagged = !email.isFlagged
 }
 
-function checkForClue(email) {
+function submitEvidence(email) {
   const vaultWord = store.sessionState?.vaultWord2
   if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
+    evidenceResult.value = 'correct'
     store.addClue(
       'mail-vault-word',
       'NovaMail',
       `Suspicious email from ${email.from}: contains the keyword "${vaultWord}".`
     )
     store.markRoomComplete('mail')
+  } else {
+    evidenceResult.value = 'wrong'
   }
 }
 
@@ -204,9 +219,7 @@ function getDefaultEmails() {
   border-bottom: 1px solid var(--border-color);
 }
 
-.folder-list {
-  padding: 8px 0;
-}
+.folder-list { padding: 8px 0; }
 
 .folder-item {
   display: flex;
@@ -217,21 +230,11 @@ function getDefaultEmails() {
   font-size: 13px;
   color: var(--text-secondary);
   transition: background var(--transition);
-  border-radius: 0;
 }
 
-.folder-item:hover {
-  background: var(--bg-surface);
-}
-
-.folder-item.active {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.folder-icon {
-  font-size: 14px;
-}
+.folder-item:hover { background: var(--bg-surface); }
+.folder-item.active { background: var(--bg-surface); color: var(--text-primary); }
+.folder-icon { font-size: 14px; }
 
 .folder-count {
   margin-left: auto;
@@ -242,7 +245,6 @@ function getDefaultEmails() {
   border-radius: 10px;
 }
 
-/* Email list */
 .email-list {
   border-right: 1px solid var(--border-color);
   overflow-y: auto;
@@ -274,20 +276,11 @@ function getDefaultEmails() {
   transition: background var(--transition);
 }
 
-.email-row:hover {
-  background: var(--bg-surface);
-}
-
-.email-row.selected {
-  background: rgba(31, 111, 235, 0.1);
-  border-left: 3px solid var(--accent-blue);
-}
+.email-row:hover { background: var(--bg-surface); }
+.email-row.selected { background: rgba(31, 111, 235, 0.1); border-left: 3px solid var(--accent-blue); }
 
 .email-row.unread .email-from,
-.email-row.unread .email-subject {
-  font-weight: 700;
-  color: var(--text-primary);
-}
+.email-row.unread .email-subject { font-weight: 700; color: var(--text-primary); }
 
 .email-row-top {
   display: flex;
@@ -307,13 +300,8 @@ function getDefaultEmails() {
   line-height: 1;
 }
 
-.flag-btn:hover {
-  opacity: 0.7;
-}
-
-.flag-btn.flagged {
-  opacity: 1;
-}
+.flag-btn:hover { opacity: 0.7; }
+.flag-btn.flagged { opacity: 1; }
 
 .email-from {
   font-size: 12px;
@@ -342,17 +330,9 @@ function getDefaultEmails() {
   text-overflow: ellipsis;
 }
 
-.email-date {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
+.email-date { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
 
-/* Viewer */
-.email-viewer {
-  overflow-y: auto;
-  padding: 24px;
-}
+.email-viewer { overflow-y: auto; padding: 24px; }
 
 .no-selection {
   display: flex;
@@ -391,4 +371,27 @@ function getDefaultEmails() {
   line-height: 1.8;
   white-space: pre-wrap;
 }
+
+.email-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-evidence {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: rgba(31, 111, 235, 0.1);
+  border: 1px solid var(--accent-blue);
+  color: var(--accent-blue);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-evidence:hover { background: rgba(31, 111, 235, 0.2); }
+.btn-evidence.submitted { background: rgba(63, 185, 80, 0.1); border-color: var(--accent-green); color: var(--accent-green); }
+.btn-evidence.wrong { background: rgba(248, 81, 73, 0.1); border-color: var(--accent-red); color: var(--accent-red); }
 </style>

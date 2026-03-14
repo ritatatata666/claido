@@ -60,7 +60,18 @@
             </div>
             <div class="listing-seller">sold by: {{ listing.seller }}</div>
             <div class="listing-desc">{{ listing.description }}</div>
-            <span class="listing-cat">[ {{ listing.category }} ]</span>
+            <div class="listing-footer">
+              <span class="listing-cat">[ {{ listing.category }} ]</span>
+              <button
+                class="flag-listing-btn"
+                :class="flagResults[listing.id]"
+                @click="flagListing(listing)"
+              >
+                <span v-if="flagResults[listing.id] === 'correct'">✓ Evidence logged</span>
+                <span v-else-if="flagResults[listing.id] === 'wrong'">✗ Not relevant</span>
+                <span v-else>⚑ Flag as evidence</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -82,6 +93,7 @@ const marketListings = ref([])
 const activeTab = ref('FORUM')
 const selectedPost = ref(null)
 const tabs = ['FORUM', 'MARKET']
+const flagResults = ref({})
 
 onMounted(async () => {
   try {
@@ -99,19 +111,24 @@ onMounted(async () => {
 })
 
 function checkForClue() {
+  // submission is now manual via flagListing()
+}
+
+function flagListing(listing) {
   const culprit = store.sessionState?.culprit
   if (!culprit) return
   const dept = culprit.department?.toLowerCase()
-  const listing = marketListings.value.find(l =>
-    l.description?.toLowerCase().includes(dept) || l.description?.toLowerCase().includes('novacorp')
-  )
-  if (listing) {
+  const relevant = listing.description?.toLowerCase().includes(dept)
+  if (relevant) {
+    flagResults.value[listing.id] = 'correct'
     store.addClue(
       'onion-market',
       'The Onion',
       `Dark web listing found: "${listing.title}" — relates to ${culprit.department} department.`
     )
     store.markRoomComplete('onion')
+  } else {
+    flagResults.value[listing.id] = 'wrong'
   }
 }
 
@@ -346,9 +363,32 @@ function getDefaultContent() {
   margin-bottom: 8px;
 }
 
+.listing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
 .listing-cat {
   font-size: 10px;
   color: #004400;
   letter-spacing: 1px;
 }
+
+.flag-listing-btn {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px dotted #006600;
+  color: #006600;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.flag-listing-btn:hover { border-color: #00cc33; color: #00cc33; }
+.flag-listing-btn.correct { border-color: #00ff41; color: #00ff41; }
+.flag-listing-btn.wrong { border-color: #550000; color: #550000; }
 </style>

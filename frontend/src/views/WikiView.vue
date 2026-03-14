@@ -65,6 +65,13 @@
                 <div v-if="decodedContent[selectedPage.id]" class="decoded-block">
                   <div class="decoded-label">✓ Decoded:</div>
                   <div class="decoded-text">{{ decodedContent[selectedPage.id] }}</div>
+                  <div class="decoded-submit-row">
+                    <button class="submit-evidence-btn" @click="submitWikiClue(selectedPage)">
+                      ⚑ Submit as evidence
+                    </button>
+                    <span v-if="wikiSubmitResult[selectedPage.id] === 'correct'" class="submit-correct">✓ Evidence logged</span>
+                    <span v-else-if="wikiSubmitResult[selectedPage.id] === 'wrong'" class="submit-wrong">✗ No evidence found here.</span>
+                  </div>
                 </div>
               </div>
             </template>
@@ -88,6 +95,7 @@ const loading = ref(true)
 const selectedPage = ref(null)
 const searchTerm = ref('')
 const decodedContent = ref({})
+const wikiSubmitResult = ref({})
 
 onMounted(async () => {
   try {
@@ -130,15 +138,22 @@ function rot13(str) {
 function decodeRot13(page) {
   const decoded = rot13(page.redactedSection || '')
   decodedContent.value[page.id] = decoded
+}
 
+function submitWikiClue(page) {
+  const decoded = decodedContent.value[page.id]
+  if (!decoded) return
   const vaultWord = store.sessionState?.vaultWord3
   if (vaultWord && decoded.toLowerCase().includes(vaultWord.toLowerCase())) {
+    wikiSubmitResult.value[page.id] = 'correct'
     store.addClue(
       'wiki-vault-word',
       'NovaWiki',
       `ROT13 decoded text in "${page.title}" contains the keyword: "${vaultWord}".`
     )
     store.markRoomComplete('wiki')
+  } else {
+    wikiSubmitResult.value[page.id] = 'wrong'
   }
 }
 
@@ -417,5 +432,43 @@ function getDefaultPages() {
   font-size: 13px;
   color: var(--text-primary);
   line-height: 1.6;
+}
+
+.decoded-submit-row {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.submit-evidence-btn {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  padding: 5px 14px;
+  background: rgba(0, 82, 204, 0.1);
+  border: 1px solid var(--accent-blue);
+  color: var(--accent-blue);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.submit-evidence-btn:hover {
+  background: rgba(0, 82, 204, 0.2);
+}
+
+.submit-correct {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: #2a7d2a;
+}
+
+.submit-wrong {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: #b33030;
 }
 </style>

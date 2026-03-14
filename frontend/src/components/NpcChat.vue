@@ -1,108 +1,86 @@
 <template>
-  <div class="npc-chat-wrapper">
-    <!-- Trigger button -->
-    <button class="interrogate-btn" @click="open = true">
-      Interrogate
+  <div :class="['npc-chat', { open: isOpen }]">
+    <!-- Toggle button -->
+    <button class="npc-toggle" @click="isOpen = !isOpen">
+      <span class="npc-avatar">👤</span>
+      <span class="npc-toggle-name">{{ npcName }}</span>
+      <span class="npc-toggle-role">{{ npcRole }}</span>
+      <span class="toggle-arrow">{{ isOpen ? '▼' : '▲' }}</span>
     </button>
 
-    <!-- Backdrop -->
-    <Transition name="backdrop">
-      <div v-if="open" class="backdrop" @click="open = false" />
-    </Transition>
-
-    <!-- Drawer -->
-    <Transition name="drawer">
-      <div v-if="open" class="drawer">
-        <div class="drawer-header">
-          <div class="npc-info">
-            <span class="npc-avatar">{{ npcAvatar }}</span>
-            <div>
-              <div class="npc-name">{{ npcName }}</div>
-              <div class="npc-role">{{ npcRole }}</div>
-            </div>
-          </div>
-          <button class="close-btn" @click="open = false">✕</button>
+    <!-- Chat panel -->
+    <div v-if="isOpen" class="npc-panel">
+      <div class="npc-header">
+        <div class="npc-info">
+          <span class="npc-name">{{ npcName }}</span>
+          <span class="npc-role-label">{{ npcRole }}</span>
         </div>
+        <button class="npc-close" @click="isOpen = false">✕</button>
+      </div>
 
-        <div class="messages" ref="messagesEl">
-          <div v-if="messages.length === 0" class="empty-chat">
-            <p>Begin your interrogation. Be strategic — witnesses won't reveal everything.</p>
-          </div>
-          <div
-            v-for="(msg, i) in messages"
-            :key="i"
-            :class="['message', msg.role === 'user' ? 'message-user' : 'message-npc']"
-          >
-            <div class="bubble">{{ msg.content }}</div>
-          </div>
-          <div v-if="loading" class="message message-npc">
-            <div class="bubble typing">
-              <span></span><span></span><span></span>
-            </div>
-          </div>
+      <div class="npc-messages" ref="messagesEl">
+        <div v-if="messages.length === 0" class="npc-intro">
+          <p>You can ask {{ npcName }} for information about this investigation.</p>
         </div>
-
-        <div class="input-area">
-          <textarea
-            v-model="draft"
-            placeholder="Ask a question..."
-            rows="2"
-            @keydown.enter.exact.prevent="send"
-            :disabled="loading"
-          />
-          <button class="btn-primary send-btn" :disabled="!draft.trim() || loading" @click="send">
-            Send
-          </button>
+        <div
+          v-for="(msg, i) in messages"
+          :key="i"
+          :class="['npc-msg', msg.role === 'user' ? 'msg-user' : 'msg-npc']"
+        >
+          <div class="msg-bubble">{{ msg.content }}</div>
+        </div>
+        <div v-if="loading" class="npc-typing">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
         </div>
       </div>
-    </Transition>
+
+      <div class="npc-input-row">
+        <input
+          v-model="inputText"
+          class="npc-input"
+          :placeholder="`Ask ${npcName}...`"
+          :disabled="loading"
+          @keydown.enter="sendMessage"
+        />
+        <button class="npc-send" :disabled="loading || !inputText.trim()" @click="sendMessage">
+          Send
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useGameStore } from '../stores/gameStore.js'
 
 const props = defineProps({
   npcId: { type: String, required: true },
   npcName: { type: String, required: true },
-  npcRole: { type: String, required: true },
+  npcRole: { type: String, default: '' },
 })
 
 const store = useGameStore()
-const open = ref(false)
-const draft = ref('')
+const isOpen = ref(false)
+const inputText = ref('')
 const loading = ref(false)
 const messagesEl = ref(null)
 
-const npcAvatars = {
-  receptionist: '👩',
-  sysadmin: '🧑‍💻',
-  archivist: '📚',
-  cfo: '💼',
-  ceo: '👔',
-}
-const npcAvatar = computed(() => npcAvatars[props.npcId] || '🧑')
-
 const messages = computed(() => store.getNpcHistory(props.npcId))
 
-watch(
-  () => messages.value.length,
-  async () => {
+async function sendMessage() {
+  const text = inputText.value.trim()
+  if (!text || loading.value) return
+  inputText.value = ''
+  loading.value = true
+  try {
+    await store.sendNpcMessage(props.npcId, text)
     await nextTick()
     if (messagesEl.value) {
       messagesEl.value.scrollTop = messagesEl.value.scrollHeight
     }
-  }
-)
-
-async function send() {
-  const text = draft.value.trim()
-  if (!text || loading.value) return
-  draft.value = ''
-  loading.value = true
-  try {
-    await store.sendNpcMessage(props.npcId, text)
+  } catch (e) {
+    store.addNpcMessage(props.npcId, 'assistant', 'Sorry, I\'m unable to respond right now.')
   } finally {
     loading.value = false
   }
@@ -110,189 +88,176 @@ async function send() {
 </script>
 
 <style scoped>
-.npc-chat-wrapper {
+.npc-chat {
   position: fixed;
-  bottom: 56px;
-  right: 24px;
-  z-index: 100;
-}
-
-.interrogate-btn {
-  background: var(--accent-purple);
-  color: #fff;
-  font-weight: 600;
-  font-size: 13px;
-  padding: 10px 18px;
-  border-radius: var(--radius);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
-}
-
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 200;
-}
-
-.drawer {
-  position: fixed;
-  top: 48px;
-  right: 0;
   bottom: 36px;
-  width: 380px;
-  background: var(--bg-secondary);
-  border-left: 1px solid var(--border-color);
-  z-index: 300;
+  left: 24px;
+  z-index: 1000;
+  font-family: var(--font-mono);
+}
+
+.npc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f5f5f5;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  transition: border-color var(--transition);
+}
+
+.npc-toggle:hover { border-color: #c9a24a; color: #fff9d4; }
+
+.npc-avatar { font-size: 14px; }
+
+.npc-toggle-name { font-weight: 700; }
+
+.npc-toggle-role {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.toggle-arrow { font-size: 10px; color: var(--text-muted); }
+
+.npc-panel {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 320px;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
+  max-height: 400px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
-.drawer-header {
+.npc-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.npc-info {
-  display: flex;
   align-items: center;
-  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.npc-avatar {
-  font-size: 28px;
-}
+.npc-info { display: flex; flex-direction: column; gap: 2px; }
 
-.npc-name {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text-primary);
-}
+.npc-name { font-size: 13px; font-weight: 700; color: #fff8e5; }
 
-.npc-role {
-  font-size: 12px;
-  color: var(--text-muted);
-}
+.npc-role-label { font-size: 11px; color: #c9a24a; }
 
-.close-btn {
+.npc-close {
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 16px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
 }
 
-.close-btn:hover {
-  background: var(--bg-surface);
-  opacity: 1;
-}
+.npc-close:hover { color: var(--text-primary); }
 
-.messages {
+.npc-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  min-height: 120px;
 }
 
-.empty-chat {
-  color: var(--text-muted);
-  font-size: 13px;
-  font-style: italic;
-  text-align: center;
-  padding: 24px 0;
-}
+.npc-intro { font-size: 12px; color: var(--text-muted); font-style: italic; }
 
-.message {
-  display: flex;
-}
+.npc-msg { display: flex; }
 
-.message-user {
-  justify-content: flex-end;
-}
+.msg-user { justify-content: flex-end; }
+.msg-npc { justify-content: flex-start; }
 
-.message-npc {
-  justify-content: flex-start;
-}
-
-.bubble {
-  max-width: 85%;
-  padding: 10px 14px;
+.msg-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
-.message-user .bubble {
-  background: var(--accent-blue);
-  color: #fff;
-  border-bottom-right-radius: 2px;
+.msg-user .msg-bubble {
+  background: #3a3a3a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
-.message-npc .bubble {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  border-bottom-left-radius: 2px;
+.msg-npc .msg-bubble {
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f0f0f0;
 }
 
-/* Typing indicator */
-.typing {
+.npc-typing {
   display: flex;
   gap: 4px;
-  align-items: center;
-  padding: 10px 14px;
+  padding: 4px 0;
 }
 
-.typing span {
-  display: inline-block;
+.dot {
   width: 6px;
   height: 6px;
-  background: var(--text-muted);
   border-radius: 50%;
-  animation: bounce 1.2s ease-in-out infinite;
+  background: var(--text-muted);
+  animation: bounce 1.2s infinite;
 }
 
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes bounce {
-  0%, 60%, 100% { transform: translateY(0); }
-  30% { transform: translateY(-6px); }
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
 }
 
-.input-area {
+.npc-input-row {
   display: flex;
   gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--border-color);
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: #121212;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
-.input-area textarea {
+.npc-input {
   flex: 1;
-  resize: none;
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  background: #1b1b1b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  color: #f5f5f5;
+  outline: none;
 }
 
-.send-btn {
-  align-self: flex-end;
+.npc-input:focus { border-color: #c9a24a; }
+
+.npc-send {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: #c9a24a;
+  border: 1px solid #c9a24a;
+  color: #050505;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: transform 0.15s;
 }
 
-/* Drawer transitions */
-.drawer-enter-active, .drawer-leave-active {
-  transition: transform 0.25s ease;
-}
-.drawer-enter-from, .drawer-leave-to {
-  transform: translateX(100%);
-}
-
-.backdrop-enter-active, .backdrop-leave-active {
-  transition: opacity 0.2s ease;
-}
-.backdrop-enter-from, .backdrop-leave-to {
-  opacity: 0;
-}
+.npc-send:hover:not(:disabled) { transform: scale(1.02); }
+.npc-send:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

@@ -20,6 +20,7 @@ function persistState(state) {
       completedRooms: state.completedRooms,
       conversationHistories: state.conversationHistories,
       gameStartTime: state.gameStartTime,
+      shellHistory: state.shellHistory,
     }))
   } catch {}
 }
@@ -37,6 +38,7 @@ export const useGameStore = defineStore('game', {
     gameStartTime: _persisted.gameStartTime ?? null,
     clueNotification: null,
     roomCache: {},
+    shellHistory: _persisted.shellHistory ?? [],
   }),
 
   getters: {
@@ -125,6 +127,11 @@ export const useGameStore = defineStore('game', {
       const data = await res.json()
       this.roomCache[roomName] = data
       return data
+    },
+
+    setShellHistory(history) {
+      this.shellHistory = history
+      persistState(this)
     },
 
     async validateAnswer(roomName, answer) {
