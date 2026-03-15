@@ -51,7 +51,7 @@ public static class RoomContentSanitizer
 
         var accessLogPath = $"{home}/logs/access.log";
         var suspiciousEntry = $"[{ExtractTime(session.IncidentTimestamp)}] WARN  Employee {session.Culprit.Id} accessed Server Room B (AFTER_HOURS)";
-        var accessLog = files.GetValueOrDefault(accessLogPath) ?? string.Empty;
+        var accessLog = NormalizeAccessLog(files.GetValueOrDefault(accessLogPath) ?? string.Empty);
         if (!accessLog.Contains($"Employee {session.Culprit.Id}", StringComparison.OrdinalIgnoreCase))
         {
             accessLog = string.IsNullOrWhiteSpace(accessLog)
@@ -453,6 +453,37 @@ public static class RoomContentSanitizer
         }
 
         return "01:17:00";
+    }
+
+    private static string NormalizeAccessLog(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return content;
+
+        var lines = content
+            .Replace("\r\n", "\n")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(NormalizeAccessLogLine);
+
+        return string.Join("\n", lines);
+    }
+
+    private static string NormalizeAccessLogLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return line;
+
+        if (DateTime.TryParse(line, out var parsedLine))
+        {
+            return $"[{parsedLine:HH:mm:ss}] INFO  {line}";
+        }
+
+        var trimmed = line.Trim();
+        var isoMatch = System.Text.RegularExpressions.Regex.Match(trimmed, "^(?<stamp>\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?<rest>.*)$");
+        if (isoMatch.Success && DateTime.TryParse(isoMatch.Groups["stamp"].Value, out var parsedIso))
+        {
+            return $"[{parsedIso:HH:mm:ss}]{isoMatch.Groups["rest"].Value}".TrimEnd();
+        }
+
+        return trimmed;
     }
 
     private static string UpsertLine(string? content, string key, string value, string fallbackContent)

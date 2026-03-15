@@ -196,7 +196,7 @@ Generate a fake corporate filesystem for a CTF game. Return JSON:
   "username": "analyst",
   "files": {
     "/home/analyst/.env": "VAULT_WORD=base64_of_{{s.VaultWord1}}\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123",
-    "/home/analyst/logs/access.log": "fake access log with 20 lines, one suspicious entry showing employee id {{s.Culprit.Id}} accessing server room at {{s.IncidentTimestamp}}",
+    "/home/analyst/logs/access.log": "fake access log with 20 lines, formatted like [HH:MM:SS] LEVEL message, including one suspicious entry showing employee id {{s.Culprit.Id}} accessing server room at [{{ExtractLogTime(s.IncidentTimestamp)}}]",
     "/home/analyst/readme.txt": "Welcome to NovaCorp internal analyst workstation.",
     "/home/analyst/notes.txt": "Reminder: badge system was offline between 01:00-03:00 on incident date.",
     "/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nanalyst:x:1000:1000::/home/analyst:/bin/bash",
@@ -206,7 +206,18 @@ Generate a fake corporate filesystem for a CTF game. Return JSON:
 }
 
 IMPORTANT: In /home/analyst/.env, the VAULT_WORD value must be the base64 encoding of "{{s.VaultWord1}}" (just that word, no newline).
+IMPORTANT: Every line in /home/analyst/logs/access.log must use the timestamp format [HH:MM:SS], not ISO 8601.
 """;
+
+  private static string ExtractLogTime(string incidentTimestamp)
+  {
+    if (DateTime.TryParse(incidentTimestamp, out var parsed))
+    {
+      return parsed.ToString("HH:mm:ss");
+    }
+
+    return "01:17:00";
+  }
 
     private static string BuildMailPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
