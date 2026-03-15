@@ -97,11 +97,26 @@ public static class RoomContentSanitizer
             return GetDefaultMail(session);
         }
 
-        if (!items.Any(item => (item.Body ?? string.Empty).Contains(session.VaultWord2, StringComparison.OrdinalIgnoreCase)))
+        if (!items.Any(item => string.Equals(item.Folder, "inbox", StringComparison.OrdinalIgnoreCase)))
         {
-            DebugLog("mail", "No email contained vaultWord2; injecting clue into one message body.");
-            var target = items.FindIndex(item => (item.From ?? string.Empty).Contains("unknown", StringComparison.OrdinalIgnoreCase));
+            DebugLog("mail", "No inbox messages found; moving first email to inbox.");
+            items[0].Folder = "inbox";
+        }
+
+        if (!items.Any(item =>
+                string.Equals(item.Folder, "inbox", StringComparison.OrdinalIgnoreCase)
+                && (item.Body ?? string.Empty).Contains(session.VaultWord2, StringComparison.OrdinalIgnoreCase)))
+        {
+            DebugLog("mail", "No inbox email contained vaultWord2; injecting clue into inbox message body.");
+            var target = items.FindIndex(item =>
+                string.Equals(item.Folder, "inbox", StringComparison.OrdinalIgnoreCase)
+                && (item.From ?? string.Empty).Contains("unknown", StringComparison.OrdinalIgnoreCase));
+            if (target < 0)
+            {
+                target = items.FindIndex(item => string.Equals(item.Folder, "inbox", StringComparison.OrdinalIgnoreCase));
+            }
             if (target < 0) target = 0;
+            items[target].Folder = "inbox";
             items[target].Body = $"{items[target].Body?.Trim()} The word you need is \"{session.VaultWord2}\".".Trim();
         }
 
@@ -119,8 +134,14 @@ public static class RoomContentSanitizer
             Date = string.IsNullOrWhiteSpace(item.Date) ? "2025-03-02T09:00:00" : item.Date,
             Body = item.Body ?? string.Empty,
             IsRead = item.IsRead,
-            Folder = string.IsNullOrWhiteSpace(item.Folder) ? "inbox" : item.Folder.ToLowerInvariant(),
+            Folder = NormalizeMailFolder(item.Folder),
         };
+    }
+
+    private static string NormalizeMailFolder(string? folder)
+    {
+        var normalized = string.IsNullOrWhiteSpace(folder) ? "inbox" : folder.Trim().ToLowerInvariant();
+        return normalized is "inbox" or "sent" ? normalized : "inbox";
     }
 
     private static List<WikiPage> NormalizeWiki(List<WikiPage>? source, SessionState session)
