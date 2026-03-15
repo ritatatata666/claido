@@ -67,13 +67,20 @@
         <div class="sticky-text">INVESTIGATE<br/>ALL ROOMS<br/>FOR CLUES</div>
       </div>
 
-      <header class="hub-topbar evidence-strip">
-        <div class="hub-logo">
+      <header class="hub-topbar evidence-strip" @click="menuOpen = false">
+        <div class="hub-logo" @click.stop="menuOpen = !menuOpen">
           <span class="logo-icon">🔐</span>
           <div class="logo-copy">
             <span class="logo-text">CLAIDO</span>
-            <span class="logo-sub">Caseboard</span>
+            <span class="logo-sub">Caseboard <span class="logo-arrow">{{ menuOpen ? '▲' : '▼' }}</span></span>
           </div>
+          <Transition name="hub-dropdown">
+            <div v-if="menuOpen" class="hub-logo-menu" @click.stop>
+              <div class="hub-menu-item" @click="router.push('/report'); menuOpen = false">
+                <span class="hub-menu-icon">📋</span> Case Report
+              </div>
+            </div>
+          </Transition>
         </div>
 
         <div class="hub-progress evidence-mini-note">
@@ -194,6 +201,7 @@ import TeamModePanel from '../components/TeamModePanel.vue'
 
 const router = useRouter()
 const store = useGameStore()
+const menuOpen = ref(false)
 
 const mainRooms = [
   {
@@ -1090,6 +1098,60 @@ const formattedTime = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.logo-arrow {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+.hub-logo-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 160px;
+  background: linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(80, 50, 20, 0.35);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.hub-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5a3d24;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.hub-menu-item:hover {
+  background: rgba(139, 100, 60, 0.2);
+}
+
+.hub-menu-icon {
+  font-size: 14px;
+}
+
+.hub-dropdown-enter-active,
+.hub-dropdown-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.hub-dropdown-enter-from,
+.hub-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .logo-copy {

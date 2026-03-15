@@ -5,6 +5,7 @@
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
         <span class="case-file">CASE FILE #NC-2025-0303</span>
+        <button v-if="store.sessionId" class="top-report-btn" @click="router.push('/report')">📋 Case Report</button>
       </div>
 
       <!-- Stamp heading -->
@@ -308,6 +309,25 @@ async function createTeamRoom() {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.top-report-btn {
+  padding: 5px 12px;
+  background: rgba(200, 169, 122, 0.2);
+  border: 1px solid rgba(139, 100, 60, 0.45);
+  border-radius: 4px;
+  color: rgba(255, 220, 180, 0.85);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.top-report-btn:hover {
+  background: rgba(200, 169, 122, 0.35);
+  border-color: rgba(139, 100, 60, 0.7);
 }
 
 .case-file {
