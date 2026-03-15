@@ -1,0 +1,23 @@
+{
+  "users": [
+    {
+      "userId": "3d65af38-9199-4d9b-863e-0d5e5c8ceb52",
+      "username": "Rita",
+      "passwordHashBase64": "TpOLoOwHaIOG7IPGDV/IJdXOtEbrmmM9d0hWK9JgD2g=",
+      "passwordSaltBase64": "eVFej7182NsdSZPRz4kaRg==",
+      "createdAtUtc": "2026-03-14T23:50:28.690208Z",
+      "history": [
+        {
+          "sessionId": "a41ec112-4da1-4df2-8511-15a9a0a41ffd",
+          "startedAtUtc": "2026-03-15T01:41:21.47099Z",
+          "completedAtUtc": "2026-03-15T01:43:42.289248Z",
+          "elapsedSeconds": 136,
+          "points": 4456,
+          "wrongAnswers": 3,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard"
+        }
+      ]
+    }
+  ]
+}

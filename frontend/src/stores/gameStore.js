@@ -1,9 +1,22 @@
 import { defineStore } from 'pinia'
 
-const API = import.meta.env.VITE_API_BASE_URL
+const API = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const STORAGE_KEY = 'claido_session'
 const DEFAULT_VILLAIN_TOKENS = 3
 const DEFAULT_GOOD_TOKENS = 2
+
+async function apiFetch(path, options = {}) {
+  const headers = options.headers || {}
+  try {
+    return await fetch(`${API}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    })
+  } catch {
+    throw new Error(`Cannot reach backend (${API || 'via /api proxy'}). Ensure backend is running.`)
+  }
+}
 
 function normalizeClue(clue = {}) {
   return {
@@ -129,8 +142,31 @@ export const useGameStore = defineStore('game', {
   },
 
   actions: {
+    resetState() {
+      this.sessionId = null
+      this.sessionState = null
+      this.currentRoom = null
+      this.discoveredClues = []
+      this.conversationHistories = {}
+      this.completedRooms = []
+      this.gameStartTime = null
+      this.clueNotification = null
+      this.roomCache = {}
+      this.shellHistory = []
+      this.teamMode = 'standard'
+      this.teamRole = 'good'
+      this.villainTokens = DEFAULT_VILLAIN_TOKENS
+      this.goodTokens = DEFAULT_GOOD_TOKENS
+      this.teamActionLog = []
+      this.teamMembers = []
+      this.joinCode = ''
+      this.playerId = null
+      this.lockedClueIds = []
+      persistState(this)
+    },
+
     async createSession() {
-      const res = await fetch(`${API}/api/session/create`, { method: 'POST' })
+      const res = await apiFetch('/api/session/create', { method: 'POST' })
       if (!res.ok) throw new Error('Failed to create session')
       const data = await res.json()
       initializeNewSession(this, data)
@@ -143,7 +179,7 @@ export const useGameStore = defineStore('game', {
     },
 
     async createTeamRoom(displayName = 'Host Investigator') {
-      const res = await fetch(`${API}/api/session/team/create`, {
+      const res = await apiFetch('/api/session/team/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName }),
@@ -162,7 +198,7 @@ export const useGameStore = defineStore('game', {
     async joinTeamSession(joinCode, displayName = 'Investigator') {
       const code = joinCode ?? this.joinCode
       if (!code) throw new Error('Join code is required.')
-      const res = await fetch(`${API}/api/session/join`, {
+      const res = await apiFetch('/api/session/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +218,7 @@ export const useGameStore = defineStore('game', {
 
     async refreshTeamState() {
       if (!this.sessionId) return null
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/state`)
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/state`)
       if (!res.ok) throw new Error('Failed to refresh team state.')
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
@@ -235,7 +271,7 @@ export const useGameStore = defineStore('game', {
 
     async lockClue(clue) {
       if (!clue || !this.sessionId || !this.playerId || this.teamMode !== 'team' || this.teamRole !== 'villain') return false
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/lock`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/lock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,7 +289,7 @@ export const useGameStore = defineStore('game', {
 
     async unlockClue(clue) {
       if (!clue || !this.sessionId || !this.playerId || this.teamMode !== 'team') return false
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/unlock`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -294,7 +330,7 @@ export const useGameStore = defineStore('game', {
 
     async sendNpcMessage(npcId, message) {
       const history = this.getNpcHistory(npcId)
-      const res = await fetch(`${API}/api/session/${this.sessionId}/npc/chat`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/npc/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,7 +350,7 @@ export const useGameStore = defineStore('game', {
       if (this.roomCache[roomName]) {
         return this.roomCache[roomName]
       }
-      const res = await fetch(`${API}/api/session/${this.sessionId}/room/${roomName}/enter`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/room/${roomName}/enter`, {
         method: 'POST',
       })
       if (res.status === 404) throw new Error('Session expired — please start a new game.')
@@ -329,11 +365,11 @@ export const useGameStore = defineStore('game', {
       persistState(this)
     },
 
-    async validateAnswer(roomName, answer) {
-      const res = await fetch(`${API}/api/session/${this.sessionId}/room/${roomName}/validate`, {
+    async validateAnswer(roomName, answer, extras = {}) {
+      const res = await apiFetch(`/api/session/${this.sessionId}/room/${roomName}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify({ answer, ...extras }),
       })
       return res.json()
     },

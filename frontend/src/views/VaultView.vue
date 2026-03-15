@@ -112,6 +112,7 @@ const solved = ref(false)
 const feedback = ref('')
 const feedbackType = ref('error')
 const solveTime = ref(0)
+const wrongAttempts = ref(0)
 
 const formattedTime = computed(() => {
   const s = solveTime.value
@@ -127,12 +128,20 @@ async function submit() {
   feedback.value = ''
 
   try {
-    const res = await store.validateAnswer('vault', answer)
+    const elapsed = Math.floor((Date.now() - store.gameStartTime) / 1000)
+    const points = Math.max(0, 5000 - elapsed * 4)
+    const res = await store.validateAnswer('vault', answer, {
+      elapsedSeconds: elapsed,
+      points,
+      wrongAnswers: wrongAttempts.value,
+      timePenaltySeconds: 0,
+    })
     if (res.correct) {
-      solveTime.value = Math.floor((Date.now() - store.gameStartTime) / 1000)
+      solveTime.value = elapsed
       store.markRoomComplete('vault')
       solved.value = true
     } else {
+      wrongAttempts.value += 1
       feedbackType.value = 'error'
       feedback.value = res.hint || 'Incorrect passphrase. Keep investigating.'
     }

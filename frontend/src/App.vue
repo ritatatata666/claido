@@ -35,7 +35,7 @@ import bloodSplatter2 from '../images/bloodSplatter2.png'
 
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
-const isLanding = computed(() => route.path === '/')
+const isLanding = computed(() => route.path === '/' || route.path === '/history')
 const showSplatters = computed(() => isHub.value || isLanding.value)
 </script>
 

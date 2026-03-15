@@ -1,10 +1,15 @@
 <template>
   <div class="landing">
+    <button class="window-corner-btn" @click="router.push('/history')">Recent Cases</button>
     <div class="landing-board">
 
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
-        <span class="case-file">CASE FILE #NC-2025-0303</span>
+        <div class="top-right">
+          <span class="case-file">CASE FILE #NC-2025-0303</span>
+          <span>Signed in as <strong>{{ auth.user?.username }}</strong></span>
+          <button class="top-right__logout" @click="logout">Logout</button>
+        </div>
       </div>
 
       <!-- Stamp heading -->
@@ -119,6 +124,7 @@
       </div>
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+
     </div>
   </div>
 </template>
@@ -127,9 +133,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
+import { useAuthStore } from '../stores/authStore.js'
 
 const router = useRouter()
 const store = useGameStore()
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
 const joinCodeInput = ref('')
@@ -194,6 +202,12 @@ async function createTeamRoom() {
     loading.value = false
   }
 }
+
+async function logout() {
+  await auth.logout()
+  store.resetState()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -223,6 +237,23 @@ async function createTeamRoom() {
       transparent 8px
     ),
     linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+}
+
+.window-corner-btn {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid rgba(255, 240, 220, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-height: 42px;
+  padding: 0 18px;
 }
 
 .landing-board {
@@ -257,6 +288,24 @@ async function createTeamRoom() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 240, 220, 0.9);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.top-right__logout {
+  border: 1px solid rgba(255, 240, 220, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
 }
 
 .evidence-card {
@@ -673,7 +722,15 @@ async function createTeamRoom() {
 
 @media (max-width: 640px) {
   .landing {
-    padding: 22px 14px 40px;
+    padding: 64px 14px 40px;
+  }
+
+  .window-corner-btn {
+    top: 10px;
+    left: 10px;
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 11px;
   }
 
   .top-bar {
@@ -682,11 +739,16 @@ async function createTeamRoom() {
     gap: 6px;
   }
 
+  .top-right {
+    flex-wrap: wrap;
+  }
+
   .card-title-block,
   .room-list li {
     grid-template-columns: 1fr;
     display: grid;
   }
+
 }
 
 .mode-card {

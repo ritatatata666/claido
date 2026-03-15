@@ -12,6 +12,9 @@ public class Employee
 public class SessionState
 {
     public Guid SessionId { get; set; } = Guid.NewGuid();
+    public Guid OwnerUserId { get; set; }
+    public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
+    public bool HistoryRecorded { get; set; }
     public Employee Culprit { get; set; } = new();
     public List<Employee> Employees { get; set; } = new();
     public string IncidentTimestamp { get; set; } = "";
@@ -64,6 +67,10 @@ public class ConversationMessage
 public class ValidateRequest
 {
     public string Answer { get; set; } = "";
+    public int? ElapsedSeconds { get; set; }
+    public int? Points { get; set; }
+    public int? WrongAnswers { get; set; }
+    public int? TimePenaltySeconds { get; set; }
 }
 
 public class TeamMember
