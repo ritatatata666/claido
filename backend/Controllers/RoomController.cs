@@ -118,7 +118,7 @@ public class RoomController : ControllerBase
         object? leaderboard = null;
         if (correct && roomName == "vault")
         {
-            leaderboard = RecordSolve(session, req.MemberId);
+            leaderboard = RecordSolve(session, userId);
         }
 
         if (correct)
@@ -243,7 +243,7 @@ public class RoomController : ControllerBase
         };
     }
 
-    private IEnumerable<object> RecordSolve(SessionState session)
+    private IEnumerable<object> RecordSolve(SessionState session, Guid userId)
     {
         lock (session)
         {
@@ -252,33 +252,29 @@ public class RoomController : ControllerBase
                 var completedAt = DateTime.UtcNow;
                 session.CompletedAtUtc = completedAt;
 
-                var displayName = ResolveDisplayName(session, memberId);
                 var elapsedSeconds = (int)Math.Round((completedAt - session.StartedAtUtc).TotalSeconds);
                 var solveSeconds = Math.Max(1, elapsedSeconds + Math.Max(0, session.PenaltySecondsTotal));
 
-                _leaderboard.AddOrUpdate(
-                    displayName,
-                    _ => new LeaderboardEntry
-                    {
-                        DisplayName = displayName,
-                        SolveSeconds = solveSeconds,
-                        CompletedAtUtc = completedAt,
-                    },
-                    (_, existing) => existing.SolveSeconds <= solveSeconds
-                        ? existing
-                        : new LeaderboardEntry
-                        {
-                            DisplayName = displayName,
-                            SolveSeconds = solveSeconds,
-                            CompletedAtUtc = completedAt,
-                        });
+                var totalWrongAnswers = session.WrongAttemptsByRoom.Values.Sum();
+
+                _users.AddHistory(userId, new GameHistoryEntry
+                {
+                    SessionId = session.SessionId,
+                    StartedAtUtc = session.StartedAtUtc,
+                    CompletedAtUtc = completedAt,
+                    ElapsedSeconds = solveSeconds,
+                    Points = Math.Max(0, 1000 - (totalWrongAnswers * 50)),
+                    WrongAnswers = totalWrongAnswers,
+                    TimePenaltySeconds = Math.Max(0, session.PenaltySecondsTotal),
+                    TeamMode = session.TeamMode,
+                    CaseFile = "PROJECT NOVA INCIDENT",
+                    CulpritName = session.Culprit?.Name ?? "",
+                    Questions = BuildQuestionReview(session),
+                });
             }
         }
 
-        return _leaderboard.Values
-            .OrderBy(entry => entry.SolveSeconds)
-            .ThenBy(entry => entry.CompletedAtUtc)
-            .Take(5)
+        return _users.GetLeaderboard()
             .Select(entry => new
             {
                 displayName = entry.DisplayName,
