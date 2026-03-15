@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 using Claido.Models;
 
 namespace Claido.Services;
@@ -65,7 +66,7 @@ public static class RoomContentSanitizer
                 ? suspiciousEntry
                 : $"{suspiciousEntry}\n{accessLog.Trim()}";
         }
-        files[accessLogPath] = accessLog;
+        files[accessLogPath] = NormalizeAccessLog(accessLog);
 
         var dirs = new HashSet<string>(source?.Dirs ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase)
         {
@@ -482,7 +483,19 @@ public static class RoomContentSanitizer
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(NormalizeAccessLogLine);
 
-        return string.Join("\n", lines);
+        var sorted = lines
+            .Select((line, index) => new
+            {
+                Line = line,
+                Index = index,
+                Seconds = TryExtractTimestampSeconds(line),
+            })
+            .OrderBy(item => item.Seconds.HasValue ? 0 : 1)
+            .ThenBy(item => item.Seconds ?? int.MaxValue)
+            .ThenBy(item => item.Index)
+            .Select(item => item.Line);
+
+        return string.Join("\n", sorted);
     }
 
     private static string NormalizeAccessLogLine(string line)
@@ -502,6 +515,21 @@ public static class RoomContentSanitizer
         }
 
         return trimmed;
+    }
+
+    private static int? TryExtractTimestampSeconds(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return null;
+
+        var match = System.Text.RegularExpressions.Regex.Match(line.Trim(), "^\\[(?<ts>\\d{2}:\\d{2}:\\d{2})\\]");
+        if (!match.Success) return null;
+
+        if (TimeSpan.TryParseExact(match.Groups["ts"].Value, "hh\\:mm\\:ss", CultureInfo.InvariantCulture, out var parsed))
+        {
+            return (int)parsed.TotalSeconds;
+        }
+
+        return null;
     }
 
     private static string UpsertLine(string? content, string key, string value, string fallbackContent)
