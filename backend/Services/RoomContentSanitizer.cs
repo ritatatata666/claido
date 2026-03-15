@@ -15,29 +15,36 @@ public static class RoomContentSanitizer
     {
         return roomName switch
         {
-            "shell" => JsonSerializer.Serialize(NormalizeShell(TryDeserialize<ShellRoomContent>(rawJson), session), JsonOptions),
-            "mail" => JsonSerializer.Serialize(NormalizeMail(TryDeserialize<List<MailItem>>(rawJson), session), JsonOptions),
-            "wiki" => JsonSerializer.Serialize(NormalizeWiki(TryDeserialize<List<WikiPage>>(rawJson), session), JsonOptions),
-            "search" => JsonSerializer.Serialize(NormalizeSearch(TryDeserialize<List<SearchLog>>(rawJson), session), JsonOptions),
-            "onion" => JsonSerializer.Serialize(NormalizeOnion(TryDeserialize<OnionRoomContent>(rawJson), session), JsonOptions),
+            "shell" => JsonSerializer.Serialize(NormalizeShell(TryDeserialize<ShellRoomContent>(roomName, rawJson), session), JsonOptions),
+            "mail" => JsonSerializer.Serialize(NormalizeMail(TryDeserialize<List<MailItem>>(roomName, rawJson), session), JsonOptions),
+            "wiki" => JsonSerializer.Serialize(NormalizeWiki(TryDeserialize<List<WikiPage>>(roomName, rawJson), session), JsonOptions),
+            "search" => JsonSerializer.Serialize(NormalizeSearch(TryDeserialize<List<SearchLog>>(roomName, rawJson), session), JsonOptions),
+            "onion" => JsonSerializer.Serialize(NormalizeOnion(TryDeserialize<OnionRoomContent>(roomName, rawJson), session), JsonOptions),
             _ => rawJson,
         };
     }
 
-    private static T? TryDeserialize<T>(string rawJson)
+    private static T? TryDeserialize<T>(string roomName, string rawJson)
     {
         try
         {
             return JsonSerializer.Deserialize<T>(rawJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
-        catch
+        catch (Exception ex)
         {
+            DebugLog(roomName, $"Deserialization failed for {typeof(T).Name}: {ex.GetType().Name} - {ex.Message}");
+            DebugLog(roomName, $"Raw snippet: {BuildSnippet(rawJson)}");
             return default;
         }
     }
 
     private static ShellRoomContent NormalizeShell(ShellRoomContent? source, SessionState session)
     {
+        if (source is null)
+        {
+            DebugLog("shell", "Input payload is null; using shell defaults.");
+        }
+
         var username = string.IsNullOrWhiteSpace(source?.Username) ? "analyst" : source!.Username.Trim();
         var home = $"/home/{username}";
         var files = source?.Files is null
@@ -85,11 +92,13 @@ public static class RoomContentSanitizer
 
         if (items.Count == 0)
         {
+            DebugLog("mail", "Mail list was empty/null; using default mail set.");
             return GetDefaultMail(session);
         }
 
         if (!items.Any(item => (item.Body ?? string.Empty).Contains(session.VaultWord2, StringComparison.OrdinalIgnoreCase)))
         {
+            DebugLog("mail", "No email contained vaultWord2; injecting clue into one message body.");
             var target = items.FindIndex(item => (item.From ?? string.Empty).Contains("unknown", StringComparison.OrdinalIgnoreCase));
             if (target < 0) target = 0;
             items[target].Body = $"{items[target].Body?.Trim()} The word you need is \"{session.VaultWord2}\".".Trim();
@@ -120,12 +129,14 @@ public static class RoomContentSanitizer
 
         if (pages.Count == 0)
         {
+            DebugLog("wiki", "Wiki page list was empty/null; using default wiki pages.");
             return GetDefaultWiki(session);
         }
 
         var redactedIndex = pages.FindIndex(page => page.HasRedacted);
         if (redactedIndex < 0)
         {
+            DebugLog("wiki", "No redacted wiki page found; converting first page to redacted clue page.");
             redactedIndex = 0;
             pages[0].HasRedacted = true;
         }
@@ -134,6 +145,7 @@ public static class RoomContentSanitizer
         var decoded = Rot13(redactedPage.RedactedSection ?? string.Empty);
         if (!decoded.Contains(session.VaultWord3, StringComparison.OrdinalIgnoreCase))
         {
+            DebugLog("wiki", "Redacted content missing vaultWord3; replacing with deterministic clue sentence.");
             redactedPage.RedactedSection = Rot13(BuildWikiClueSentence(session.VaultWord3));
         }
 
@@ -163,6 +175,7 @@ public static class RoomContentSanitizer
 
         if (logs.Count == 0)
         {
+            DebugLog("search", "Search logs were empty/null; using default generated log set.");
             return GetDefaultSearchLogs(session, whistleblowerUserId);
         }
 
@@ -185,10 +198,12 @@ public static class RoomContentSanitizer
 
         if (existingWhistleIndex >= 0)
         {
+            DebugLog("search", "Found near-whistleblower entry but clue was invalid; repairing entry.");
             logs[existingWhistleIndex] = EnsureSearchClue(logs[existingWhistleIndex], session, whistleblowerUserId);
             return logs;
         }
 
+        DebugLog("search", "No whistleblower clue entry found; inserting deterministic clue log.");
         var insertAt = Math.Min(35, logs.Count);
         logs.Insert(insertAt, BuildSearchClueLog(session, whistleblowerUserId, "log-whistle-001"));
         return logs;
@@ -242,6 +257,7 @@ public static class RoomContentSanitizer
 
         if (forumPosts.Count == 0 && marketListings.Count == 0)
         {
+            DebugLog("onion", "Forum and market listings were empty/null; using default onion content.");
             return GetDefaultOnion(session);
         }
 
@@ -250,10 +266,12 @@ public static class RoomContentSanitizer
         {
             if (marketListings.Count == 0)
             {
+                DebugLog("onion", "No listings present; inserting fallback department listing.");
                 marketListings.Add(BuildDepartmentListing(session, 1));
             }
             else
             {
+                DebugLog("onion", "Listings present but missing culprit department clue; patching first listing.");
                 marketListings[0].Title = $"{marketListings[0].Title} - {session.Culprit.Department} access";
                 marketListings[0].Description = $"{marketListings[0].Description} Linked to NovaCorp {session.Culprit.Department} department credentials.".Trim();
             }
@@ -502,6 +520,27 @@ public static class RoomContentSanitizer
         }
 
         return string.Join("\n", lines.Where(line => !string.IsNullOrWhiteSpace(line)));
+    }
+
+    private static bool DiagnosticsEnabled()
+    {
+        var value = Environment.GetEnvironmentVariable("CLAIDO_SANITIZER_DEBUG");
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void DebugLog(string roomName, string message)
+    {
+        if (!DiagnosticsEnabled()) return;
+        Console.WriteLine($"[RoomSanitizer:{roomName}] {message}");
+    }
+
+    private static string BuildSnippet(string rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson)) return "<empty>";
+        var compact = rawJson.Replace("\r", " ").Replace("\n", " ").Trim();
+        return compact.Length <= 240 ? compact : compact[..240] + "...";
     }
 
     private sealed class ShellRoomContent

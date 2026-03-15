@@ -184,8 +184,37 @@ Generate all 8 employees with realistic diverse names and roles. Vault words mus
             raw = raw[start..end].Trim();
         }
 
+        WriteRoomDebugDumpIfEnabled(roomName, session, raw);
+
         return RoomContentSanitizer.Normalize(roomName, raw, session);
     }
+
+      private static void WriteRoomDebugDumpIfEnabled(string roomName, SessionState session, string raw)
+      {
+        if (!IsRoomDebugEnabled()) return;
+
+        try
+        {
+          var safeRoom = new string(roomName.Where(char.IsLetterOrDigit).ToArray());
+          if (string.IsNullOrWhiteSpace(safeRoom)) safeRoom = "room";
+          var fileName = $"claido-{safeRoom}-{session.SessionId:N}-{DateTime.UtcNow:yyyyMMddHHmmssfff}.raw.json";
+          var dumpPath = Path.Combine(Path.GetTempPath(), fileName);
+          File.WriteAllText(dumpPath, raw);
+          Console.WriteLine($"[RoomDebug] Saved raw {roomName} payload: {dumpPath}");
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine($"[RoomDebug] Failed to write raw {roomName} payload: {ex.Message}");
+        }
+      }
+
+      private static bool IsRoomDebugEnabled()
+      {
+        var value = Environment.GetEnvironmentVariable("CLAIDO_ROOM_DEBUG");
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+          || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+          || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+      }
 
     private static string BuildShellPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
@@ -209,15 +238,15 @@ IMPORTANT: In /home/analyst/.env, the VAULT_WORD value must be the base64 encodi
 IMPORTANT: Every line in /home/analyst/logs/access.log must use the timestamp format [HH:MM:SS], not ISO 8601.
 """;
 
-  private static string ExtractLogTime(string incidentTimestamp)
-  {
-    if (DateTime.TryParse(incidentTimestamp, out var parsed))
+    private static string ExtractLogTime(string incidentTimestamp)
     {
-      return parsed.ToString("HH:mm:ss");
-    }
+        if (DateTime.TryParse(incidentTimestamp, out var parsed))
+        {
+            return parsed.ToString("HH:mm:ss");
+        }
 
-    return "01:17:00";
-  }
+        return "01:17:00";
+    }
 
     private static string BuildMailPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
@@ -289,13 +318,13 @@ Return a JSON array:
     "ip": "192.168.x.x"
   }
 ]
-  Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from employee {{ResolveWhistleblowerUserId(s)}} should be around index 30-40.
+Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from employee {{ResolveWhistleblowerUserId(s)}} should be around index 30-40.
 """;
 
     private static string ResolveWhistleblowerUserId(SessionState session)
     {
-      return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString()
-        ?? session.Employees.First().Id.ToString();
+        return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString()
+            ?? session.Employees.First().Id.ToString();
     }
 
     private static string BuildOnionPrompt(string ctx, SessionState s) => $$"""
