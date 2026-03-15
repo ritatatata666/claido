@@ -28,7 +28,20 @@ public class SessionController : ControllerBase
             var session = await _sessionCreator.CreateSessionAsync();
             _sessions[session.SessionId] = session;
 
-            return Ok(SessionResponder.Build(session));
+            return Ok(new
+            {
+                sessionId = session.SessionId,
+                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                
+                employees = session.Employees,
+                incidentTimestamp = session.IncidentTimestamp,
+                badgeDiscrepancy = session.BadgeDiscrepancy,
+                motive = session.Motive,
+                vaultCode = session.VaultCode,
+                vaultWord1 = session.VaultWord1,
+                vaultWord2 = session.VaultWord2,
+                vaultWord3 = session.VaultWord3,
+                vaultWord4 = session.VaultWord4
+            });
         }
         catch (Exception ex)
         {
