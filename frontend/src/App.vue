@@ -10,7 +10,7 @@
   </Teleport>
 
   <Teleport to="body">
-    <div v-if="showCreepyOverlay" :class="['creepy-overlay', { 'is-hub': isHub, 'is-landing': isLanding }]" aria-hidden="true">
+    <div v-if="showCreepyOverlay" :class="['creepy-overlay', { 'is-hub': isHub, 'is-landing': isLanding, 'is-vault': isVault }]" aria-hidden="true">
       <img :src="lightLeakImg" alt="" class="creepy-overlay__img creepy-overlay__img--lightleak" />
       <img :src="shadowImg" alt="" class="creepy-overlay__img creepy-overlay__img--shadow" />
       <img :src="fingerprintImg" alt="" class="creepy-overlay__img creepy-overlay__img--fingerprint" />
@@ -18,7 +18,7 @@
     </div>
   </Teleport>
 
-  <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding }">
+  <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding, 'is-vault': isVault }">
     <div v-if="isLanding" class="app-shell__board" aria-hidden="true">
       <span class="thread thread--one"></span>
       <span class="thread thread--two"></span>
@@ -49,8 +49,9 @@ import shadowImg from '../images/shadow.png'
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
 const isLanding = computed(() => route.path === '/' || route.path === '/history')
-const showSplatters = computed(() => isHub.value || isLanding.value)
-const showCreepyOverlay = computed(() => isHub.value || isLanding.value)
+const isVault = computed(() => route.path === '/vault')
+const showSplatters = computed(() => isHub.value || isLanding.value || isVault.value)
+const showCreepyOverlay = computed(() => isHub.value || isLanding.value || isVault.value)
 </script>
 
 <style scoped>
