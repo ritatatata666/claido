@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Claido.Models;
 using Claido.Services;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.LoadApiKey();
@@ -16,13 +17,38 @@ builder.Services.AddSingleton<ConcurrentDictionary<Guid, SessionState>>();
 builder.Services.AddSingleton<ConcurrentDictionary<string, Guid>>();
 builder.Services.AddSingleton(new ConcurrentDictionary<string, LeaderboardEntry>(StringComparer.OrdinalIgnoreCase));
 builder.Services.AddSingleton<SessionCreator>();
+builder.Services.AddSingleton<UserStore>();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "claido_auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
         policy.SetIsOriginAllowed(origin =>
-                new Uri(origin).Host == "localhost")
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                    || uri.Host.Equals("::1", StringComparison.OrdinalIgnoreCase);
+            })
+              .AllowCredentials()
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -41,5 +67,7 @@ else
 }
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.Run();

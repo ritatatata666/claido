@@ -48,7 +48,7 @@ import shadowImg from '../images/shadow.png'
 
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
-const isLanding = computed(() => route.path === '/')
+const isLanding = computed(() => route.path === '/' || route.path === '/history')
 const showSplatters = computed(() => isHub.value || isLanding.value)
 const showCreepyOverlay = computed(() => isHub.value || isLanding.value)
 </script>

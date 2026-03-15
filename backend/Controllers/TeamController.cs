@@ -1,14 +1,17 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session")]
+[Authorize]
 public class TeamController : ControllerBase
 {
     private readonly SessionCreator _sessionCreator;
@@ -29,6 +32,9 @@ public class TeamController : ControllerBase
     [HttpPost("join")]
     public IActionResult Join([FromBody] JoinTeamRequest request)
     {
+        if (!TryGetUserId(out _))
+            return Unauthorized(new { error = "Not authenticated." });
+
         if (string.IsNullOrWhiteSpace(request.JoinCode))
             return BadRequest(new { error = "Join code is required." });
 
@@ -49,7 +55,7 @@ public class TeamController : ControllerBase
             member = new TeamMember
             {
                 DisplayName = displayName,
-                Role = DetermineRole(session),
+                Role = ResolveRole(request.PreferredRole, session),
                 JoinedAt = DateTime.UtcNow
             };
             session.TeamMembers.Add(member);
@@ -65,14 +71,19 @@ public class TeamController : ControllerBase
     [HttpPost("team/create")]
     public async Task<IActionResult> CreateTeamRoom([FromBody] CreateTeamRoomRequest request)
     {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(new { error = "Not authenticated." });
+
         try
         {
             var session = await _sessionCreator.CreateSessionAsync();
+            session.OwnerUserId = userId;
+            session.StartedAtUtc = DateTime.UtcNow;
             session.TeamMode = "team";
             _sessions[session.SessionId] = session;
 
             var displayName = string.IsNullOrWhiteSpace(request?.DisplayName)
-                ? "Host Investigator"
+                ? "Host"
                 : request.DisplayName.Trim();
 
             TeamMember member;
@@ -82,7 +93,7 @@ public class TeamController : ControllerBase
                 member = new TeamMember
                 {
                     DisplayName = displayName,
-                    Role = DetermineRole(session),
+                    Role = ResolveRole(request?.PreferredRole, session),
                     JoinedAt = DateTime.UtcNow
                 };
                 session.TeamMembers.Add(member);
@@ -228,10 +239,28 @@ public class TeamController : ControllerBase
         return _rng.Next(100) < 25 ? "villain" : "good";
     }
 
+    private string ResolveRole(string? preferredRole, SessionState session)
+    {
+        var normalized = preferredRole?.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "villain" => "villain",
+            "investigator" => "good",
+            "good" => "good",
+            _ => DetermineRole(session)
+        };
+    }
+
     private void AddAction(SessionState session, TeamActionEntry entry)
     {
         session.TeamActionLog.Insert(0, entry);
         if (session.TeamActionLog.Count > 8)
             session.TeamActionLog.RemoveAt(session.TeamActionLog.Count - 1);
+    }
+
+    private bool TryGetUserId(out Guid userId)
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out userId);
     }
 }

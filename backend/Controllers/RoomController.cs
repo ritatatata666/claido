@@ -1,26 +1,31 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
+using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session/{sessionId}/room/{roomName}")]
+[Authorize]
 public class RoomController : ControllerBase
 {
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
+    private readonly UserStore _users;
     private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
 
     public RoomController(
         AiService claude,
         ConcurrentDictionary<Guid, SessionState> sessions,
+        UserStore users,
         ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
     {
         _claude = claude;
         _sessions = sessions;
+        _users = users;
         _leaderboard = leaderboard;
     }
 
@@ -62,6 +67,9 @@ public class RoomController : ControllerBase
     [HttpPost("validate")]
     public IActionResult Validate(Guid sessionId, string roomName, [FromBody] ValidateRequest req)
     {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(new { error = "Not authenticated." });
+
         if (!_sessions.TryGetValue(sessionId, out var session))
             return NotFound(new { error = "Session not found." });
 
@@ -84,13 +92,34 @@ public class RoomController : ControllerBase
             _ => "Not quite. Keep searching the room for clues."
         };
 
+        if (correct && roomName == "vault" && !session.HistoryRecorded)
+        {
+            var elapsed = req.ElapsedSeconds.GetValueOrDefault((int)(DateTime.UtcNow - session.StartedAtUtc).TotalSeconds);
+            var points = req.Points.GetValueOrDefault(Math.Max(0, 5000 - elapsed * 4));
+            _users.AddHistory(userId, new GameHistoryEntry
+            {
+                SessionId = session.SessionId,
+                StartedAtUtc = session.StartedAtUtc,
+                CompletedAtUtc = DateTime.UtcNow,
+                ElapsedSeconds = Math.Max(0, elapsed),
+                Points = Math.Max(0, points),
+                WrongAnswers = Math.Max(0, req.WrongAnswers.GetValueOrDefault(0)),
+                TimePenaltySeconds = Math.Max(0, req.TimePenaltySeconds.GetValueOrDefault(0)),
+                TeamMode = session.TeamMode,
+                CaseFile = $"CASE {session.SessionId.ToString()[..8].ToUpperInvariant()}",
+                CulpritName = session.Culprit?.Name ?? "",
+                Questions = BuildQuestionReview(session),
+            });
+            session.HistoryRecorded = true;
+        }
         object? leaderboard = null;
+
         if (correct && roomName == "vault")
         {
             leaderboard = RecordSolve(session, req.MemberId);
         }
 
-        return Ok(new { correct, hint, leaderboard });
+        return Ok(new { correct, hint });
     }
 
     private static bool ValidateVaultAnswer(string answer, SessionState session)
@@ -101,6 +130,54 @@ public class RoomController : ControllerBase
             && parts[1] == session.VaultWord2
             && parts[2] == session.VaultWord3
             && parts[3] == session.VaultWord4;
+    }
+
+    private bool TryGetUserId(out Guid userId)
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out userId);
+    }
+
+    private static List<QuestionReviewEntry> BuildQuestionReview(SessionState session)
+    {
+        return new List<QuestionReviewEntry>
+        {
+            new()
+            {
+                QuestionId = "shell-1",
+                Room = "NovaShell",
+                Prompt = "What is the Shell room keyword?",
+                Solution = session.VaultWord1
+            },
+            new()
+            {
+                QuestionId = "mail-1",
+                Room = "NovaMail",
+                Prompt = "What is the Mail room keyword?",
+                Solution = session.VaultWord2
+            },
+            new()
+            {
+                QuestionId = "wiki-1",
+                Room = "NovaWiki",
+                Prompt = "What is the Wiki room keyword?",
+                Solution = session.VaultWord3
+            },
+            new()
+            {
+                QuestionId = "search-1",
+                Room = "NovaSearch",
+                Prompt = "What is the Search room keyword?",
+                Solution = session.VaultWord4
+            },
+            new()
+            {
+                QuestionId = "vault-1",
+                Room = "Vault",
+                Prompt = "What is the final four-word vault passphrase?",
+                Solution = session.VaultCode
+            }
+        };
     }
 
     private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
@@ -158,6 +235,6 @@ public class RoomController : ControllerBase
         if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
             return session.InvestigatorName.Trim();
 
-        return "Investigator";
+        return "Player";
     }
 }

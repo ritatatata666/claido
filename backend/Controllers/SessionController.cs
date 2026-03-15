@@ -1,12 +1,15 @@
 using System.Collections.Concurrent;
+using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session")]
+[Authorize]
 public class SessionController : ControllerBase
 {
     private readonly SessionCreator _sessionCreator;
@@ -26,12 +29,17 @@ public class SessionController : ControllerBase
     [HttpPost("create")]
     public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest? request)
     {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(new { error = "Not authenticated." });
+
         try
         {
             var session = await _sessionCreator.CreateSessionAsync();
             session.InvestigatorName = string.IsNullOrWhiteSpace(request?.DisplayName)
-                ? "Investigator"
+                ? "Player"
                 : request!.DisplayName.Trim();
+            session.OwnerUserId = userId;
+            session.StartedAtUtc = DateTime.UtcNow;
             _sessions[session.SessionId] = session;
 
             return Ok(new
@@ -71,5 +79,11 @@ public class SessionController : ControllerBase
             });
 
         return Ok(entries);
+    }
+
+    private bool TryGetUserId(out Guid userId)
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out userId);
     }
 }
