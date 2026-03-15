@@ -1,27 +1,29 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
+using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session/{sessionId}/room/{roomName}")]
+[Authorize]
 public class RoomController : ControllerBase
 {
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
-    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
+    private readonly UserStore _users;
 
     public RoomController(
         AiService claude,
         ConcurrentDictionary<Guid, SessionState> sessions,
-        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
+        UserStore users)
     {
         _claude = claude;
         _sessions = sessions;
-        _leaderboard = leaderboard;
+        _users = users;
     }
 
     [HttpPost("enter")]
@@ -62,6 +64,9 @@ public class RoomController : ControllerBase
     [HttpPost("validate")]
     public IActionResult Validate(Guid sessionId, string roomName, [FromBody] ValidateRequest req)
     {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(new { error = "Not authenticated." });
+
         if (!_sessions.TryGetValue(sessionId, out var session))
             return NotFound(new { error = "Session not found." });
 
@@ -84,10 +89,31 @@ public class RoomController : ControllerBase
             _ => "Not quite. Keep searching the room for clues."
         };
 
-        object? leaderboard = null;
+        if (correct && roomName == "vault" && !session.HistoryRecorded)
+        {
+            var elapsed = req.ElapsedSeconds.GetValueOrDefault((int)(DateTime.UtcNow - session.StartedAtUtc).TotalSeconds);
+            var points = req.Points.GetValueOrDefault(Math.Max(0, 5000 - elapsed * 4));
+            _users.AddHistory(userId, new GameHistoryEntry
+            {
+                SessionId = session.SessionId,
+                StartedAtUtc = session.StartedAtUtc,
+                CompletedAtUtc = DateTime.UtcNow,
+                ElapsedSeconds = Math.Max(0, elapsed),
+                Points = Math.Max(0, points),
+                WrongAnswers = Math.Max(0, req.WrongAnswers.GetValueOrDefault(0)),
+                TimePenaltySeconds = Math.Max(0, req.TimePenaltySeconds.GetValueOrDefault(0)),
+                TeamMode = session.TeamMode,
+                CaseFile = $"CASE {session.SessionId.ToString()[..8].ToUpperInvariant()}",
+                CulpritName = session.Culprit?.Name ?? "",
+                Questions = BuildQuestionReview(session),
+            });
+            session.HistoryRecorded = true;
+        }
+        IEnumerable<object>? leaderboard = null;
+
         if (correct && roomName == "vault")
         {
-            leaderboard = RecordSolve(session, req.MemberId);
+            leaderboard = RecordSolve(session);
         }
 
         return Ok(new { correct, hint, leaderboard });
@@ -103,38 +129,65 @@ public class RoomController : ControllerBase
             && parts[3] == session.VaultWord4;
     }
 
-    private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
+    private bool TryGetUserId(out Guid userId)
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out userId);
+    }
+
+    private static List<QuestionReviewEntry> BuildQuestionReview(SessionState session)
+    {
+        return new List<QuestionReviewEntry>
+        {
+            new()
+            {
+                QuestionId = "shell-1",
+                Room = "NovaShell",
+                Prompt = "What is the Shell room keyword?",
+                Solution = session.VaultWord1
+            },
+            new()
+            {
+                QuestionId = "mail-1",
+                Room = "NovaMail",
+                Prompt = "What is the Mail room keyword?",
+                Solution = session.VaultWord2
+            },
+            new()
+            {
+                QuestionId = "wiki-1",
+                Room = "NovaWiki",
+                Prompt = "What is the Wiki room keyword?",
+                Solution = session.VaultWord3
+            },
+            new()
+            {
+                QuestionId = "search-1",
+                Room = "NovaSearch",
+                Prompt = "What is the Search room keyword?",
+                Solution = session.VaultWord4
+            },
+            new()
+            {
+                QuestionId = "vault-1",
+                Room = "Vault",
+                Prompt = "What is the final four-word vault passphrase?",
+                Solution = session.VaultCode
+            }
+        };
+    }
+
+    private IEnumerable<object> RecordSolve(SessionState session)
     {
         lock (session)
         {
             if (!session.CompletedAtUtc.HasValue)
             {
-                var completedAt = DateTime.UtcNow;
-                session.CompletedAtUtc = completedAt;
-
-                var displayName = ResolveDisplayName(session, memberId);
-                var solveSeconds = Math.Max(1, (int)Math.Round((completedAt - session.StartedAtUtc).TotalSeconds));
-
-                _leaderboard.AddOrUpdate(
-                    displayName,
-                    _ => new LeaderboardEntry
-                    {
-                        DisplayName = displayName,
-                        SolveSeconds = solveSeconds,
-                        CompletedAtUtc = completedAt,
-                    },
-                    (_, existing) => existing.SolveSeconds <= solveSeconds
-                        ? existing
-                        : new LeaderboardEntry
-                        {
-                            DisplayName = displayName,
-                            SolveSeconds = solveSeconds,
-                            CompletedAtUtc = completedAt,
-                        });
+                session.CompletedAtUtc = DateTime.UtcNow;
             }
         }
 
-        return _leaderboard.Values
+        return _users.GetLeaderboard(5)
             .OrderBy(entry => entry.SolveSeconds)
             .ThenBy(entry => entry.CompletedAtUtc)
             .Take(5)
@@ -146,18 +199,4 @@ public class RoomController : ControllerBase
             });
     }
 
-    private static string ResolveDisplayName(SessionState session, Guid? memberId)
-    {
-        if (memberId.HasValue)
-        {
-            var member = session.TeamMembers.FirstOrDefault(item => item.MemberId == memberId.Value);
-            if (member != null && !string.IsNullOrWhiteSpace(member.DisplayName))
-                return member.DisplayName.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
-            return session.InvestigatorName.Trim();
-
-        return "Investigator";
-    }
 }

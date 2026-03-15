@@ -1,0 +1,228 @@
+{
+  "users": [
+    {
+      "userId": "3d65af38-9199-4d9b-863e-0d5e5c8ceb52",
+      "username": "Rita",
+      "passwordHashBase64": "TpOLoOwHaIOG7IPGDV/IJdXOtEbrmmM9d0hWK9JgD2g=",
+      "passwordSaltBase64": "eVFej7182NsdSZPRz4kaRg==",
+      "createdAtUtc": "2026-03-14T23:50:28.690208Z",
+      "history": [
+        {
+          "sessionId": "a41ec112-4da1-4df2-8511-15a9a0a41ffd",
+          "startedAtUtc": "2026-03-15T01:41:21.47099Z",
+          "completedAtUtc": "2026-03-15T01:43:42.289248Z",
+          "elapsedSeconds": 136,
+          "points": 4456,
+          "wrongAnswers": 3,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard",
+          "caseFile": "",
+          "culpritName": "",
+          "questions": []
+        }
+      ]
+    },
+    {
+      "userId": "3c277250-e2d6-4c11-9369-cbfdf352d3db",
+      "username": "hello",
+      "passwordHashBase64": "PopXs3VrDsKtLSJ8TqtRV19/N0SqhQbYCOaaQhk\u002B7dk=",
+      "passwordSaltBase64": "Z/qxdL9AFNtI\u002BCGmbXsV3A==",
+      "createdAtUtc": "2026-03-15T04:30:37.5021719Z",
+      "history": [
+        {
+          "sessionId": "c3086876-c8b8-4e53-8629-fd2d7f84d67d",
+          "startedAtUtc": "2026-03-15T04:34:25.0881277Z",
+          "completedAtUtc": "2026-03-15T04:34:41.4478276Z",
+          "elapsedSeconds": 16,
+          "points": 4936,
+          "wrongAnswers": 0,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard",
+          "caseFile": "CASE C3086876",
+          "culpritName": "Darren Shaw",
+          "questions": [
+            {
+              "questionId": "shell-1",
+              "room": "NovaShell",
+              "prompt": "What is the Shell room keyword?",
+              "solution": "dusk"
+            },
+            {
+              "questionId": "mail-1",
+              "room": "NovaMail",
+              "prompt": "What is the Mail room keyword?",
+              "solution": "warren"
+            },
+            {
+              "questionId": "wiki-1",
+              "room": "NovaWiki",
+              "prompt": "What is the Wiki room keyword?",
+              "solution": "cipher"
+            },
+            {
+              "questionId": "search-1",
+              "room": "NovaSearch",
+              "prompt": "What is the Search room keyword?",
+              "solution": "curiosity"
+            },
+            {
+              "questionId": "vault-1",
+              "room": "Vault",
+              "prompt": "What is the final four-word vault passphrase?",
+              "solution": "dusk warren cipher curiosity"
+            }
+          ]
+        },
+        {
+          "sessionId": "2d6c8296-738a-4ef5-8a74-645e8abbfb5e",
+          "startedAtUtc": "2026-03-15T04:33:33.5815541Z",
+          "completedAtUtc": "2026-03-15T04:33:56.0203062Z",
+          "elapsedSeconds": 22,
+          "points": 4912,
+          "wrongAnswers": 0,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard",
+          "caseFile": "CASE 2D6C8296",
+          "culpritName": "Derek Whitmeyer",
+          "questions": [
+            {
+              "questionId": "shell-1",
+              "room": "NovaShell",
+              "prompt": "What is the Shell room keyword?",
+              "solution": "twilight"
+            },
+            {
+              "questionId": "mail-1",
+              "room": "NovaMail",
+              "prompt": "What is the Mail room keyword?",
+              "solution": "labyrinth"
+            },
+            {
+              "questionId": "wiki-1",
+              "room": "NovaWiki",
+              "prompt": "What is the Wiki room keyword?",
+              "solution": "alias"
+            },
+            {
+              "questionId": "search-1",
+              "room": "NovaSearch",
+              "prompt": "What is the Search room keyword?",
+              "solution": "epiphany"
+            },
+            {
+              "questionId": "vault-1",
+              "room": "Vault",
+              "prompt": "What is the final four-word vault passphrase?",
+              "solution": "twilight labyrinth alias epiphany"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userId": "b3dc6d50-8120-452d-aee8-c03324185d69",
+      "username": "apple",
+      "passwordHashBase64": "MAoCNhObMZYt1jEWbogpjvKtzQyfQaglS2m4gU5Hqmc=",
+      "passwordSaltBase64": "AQMiBf85FasuUDopvO6pKg==",
+      "createdAtUtc": "2026-03-15T04:35:04.0631173Z",
+      "history": [
+        {
+          "sessionId": "d8669c6b-1f81-4137-8b8b-0882a63fb73b",
+          "startedAtUtc": "2026-03-15T04:40:26.4154026Z",
+          "completedAtUtc": "2026-03-15T04:42:34.0697214Z",
+          "elapsedSeconds": 127,
+          "points": 4492,
+          "wrongAnswers": 0,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard",
+          "caseFile": "CASE D8669C6B",
+          "culpritName": "Jordan Hayes",
+          "questions": [
+            {
+              "questionId": "shell-1",
+              "room": "NovaShell",
+              "prompt": "What is the Shell room keyword?",
+              "solution": "hourglass"
+            },
+            {
+              "questionId": "mail-1",
+              "room": "NovaMail",
+              "prompt": "What is the Mail room keyword?",
+              "solution": "sanctuary"
+            },
+            {
+              "questionId": "wiki-1",
+              "room": "NovaWiki",
+              "prompt": "What is the Wiki room keyword?",
+              "solution": "chimera"
+            },
+            {
+              "questionId": "search-1",
+              "room": "NovaSearch",
+              "prompt": "What is the Search room keyword?",
+              "solution": "zeal"
+            },
+            {
+              "questionId": "vault-1",
+              "room": "Vault",
+              "prompt": "What is the final four-word vault passphrase?",
+              "solution": "hourglass sanctuary chimera zeal"
+            }
+          ]
+        },
+        {
+          "sessionId": "12a1735a-096f-4fde-81d6-a0dcdb6fe91f",
+          "startedAtUtc": "2026-03-15T04:35:16.5401317Z",
+          "completedAtUtc": "2026-03-15T04:35:29.2549508Z",
+          "elapsedSeconds": 12,
+          "points": 4952,
+          "wrongAnswers": 0,
+          "timePenaltySeconds": 0,
+          "teamMode": "standard",
+          "caseFile": "CASE 12A1735A",
+          "culpritName": "Levi Turner",
+          "questions": [
+            {
+              "questionId": "shell-1",
+              "room": "NovaShell",
+              "prompt": "What is the Shell room keyword?",
+              "solution": "equinox"
+            },
+            {
+              "questionId": "mail-1",
+              "room": "NovaMail",
+              "prompt": "What is the Mail room keyword?",
+              "solution": "atoll"
+            },
+            {
+              "questionId": "wiki-1",
+              "room": "NovaWiki",
+              "prompt": "What is the Wiki room keyword?",
+              "solution": "chameleon"
+            },
+            {
+              "questionId": "search-1",
+              "room": "NovaSearch",
+              "prompt": "What is the Search room keyword?",
+              "solution": "zeal"
+            },
+            {
+              "questionId": "vault-1",
+              "room": "Vault",
+              "prompt": "What is the final four-word vault passphrase?",
+              "solution": "equinox atoll chameleon zeal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "userId": "2a226586-1081-4698-bda5-3875ee002baf",
+      "username": "Yajna",
+      "passwordHashBase64": "7U8dcvy5PSpca0n2kH9HQBLbnkvGL5V\u002BoUZInWN/vUs=",
+      "passwordSaltBase64": "nRYRYM20uiefGu\u002B2wBd58Q==",
+      "createdAtUtc": "2026-03-15T04:37:04.860892Z",
+      "history": []
+    }
+  ]
+}

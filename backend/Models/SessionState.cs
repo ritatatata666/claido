@@ -12,9 +12,11 @@ public class Employee
 public class SessionState
 {
     public Guid SessionId { get; set; } = Guid.NewGuid();
-    public string InvestigatorName { get; set; } = "Investigator";
+    public string InvestigatorName { get; set; } = "";
     public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAtUtc { get; set; }
+    public Guid OwnerUserId { get; set; }
+    public bool HistoryRecorded { get; set; }
     public Employee Culprit { get; set; } = new();
     public List<Employee> Employees { get; set; } = new();
     public string IncidentTimestamp { get; set; } = "";
@@ -30,6 +32,7 @@ public class SessionState
     public List<TeamMember> TeamMembers { get; set; } = new();
     public List<TeamActionEntry> TeamActionLog { get; set; } = new();
     public HashSet<string> LockedClues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> InvestigatorFoundClues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public int VillainTokens { get; set; } = 3;
     public int GoodTokens { get; set; } = 2;
 }
@@ -67,6 +70,10 @@ public class ConversationMessage
 public class ValidateRequest
 {
     public string Answer { get; set; } = "";
+    public int? ElapsedSeconds { get; set; }
+    public int? Points { get; set; }
+    public int? WrongAnswers { get; set; }
+    public int? TimePenaltySeconds { get; set; }
     public Guid? MemberId { get; set; }
 }
 
@@ -99,11 +106,13 @@ public class JoinTeamRequest
 {
     public string JoinCode { get; set; } = "";
     public string DisplayName { get; set; } = "";
+    public string PreferredRole { get; set; } = "";
 }
 
 public class CreateTeamRoomRequest
 {
     public string DisplayName { get; set; } = "";
+    public string PreferredRole { get; set; } = "";
 }
 
 public class TeamClueRequest
@@ -116,7 +125,7 @@ public class TeamClueRequest
 
 public class LeaderboardEntry
 {
-    public string DisplayName { get; set; } = "Investigator";
+    public string DisplayName { get; set; } = "Player";
     public int SolveSeconds { get; set; }
     public DateTime CompletedAtUtc { get; set; } = DateTime.UtcNow;
 }
@@ -124,6 +133,7 @@ public class LeaderboardEntry
 public class SessionBaseResponse
 {
     public Guid SessionId { get; set; }
+    public DateTime StartedAtUtc { get; set; }
     public object Culprit { get; set; } = new();
     public IEnumerable<object> Employees { get; set; } = Array.Empty<object>();
     public string IncidentTimestamp { get; set; } = "";
@@ -147,6 +157,7 @@ public class SessionTeamResponse : SessionBaseResponse
     public SessionTeamResponse(SessionBaseResponse source)
     {
         SessionId = source.SessionId;
+        StartedAtUtc = source.StartedAtUtc;
         Culprit = source.Culprit;
         Employees = source.Employees;
         IncidentTimestamp = source.IncidentTimestamp;
@@ -166,6 +177,7 @@ public class SessionTeamResponse : SessionBaseResponse
     public List<TeamMember> TeamMembers { get; set; } = new();
     public List<TeamActionEntry> TeamActionLog { get; set; } = new();
     public List<string> LockedClues { get; set; } = new();
+    public List<string> InvestigatorFoundClues { get; set; } = new();
     public Guid PlayerId { get; set; }
     public string Role { get; set; } = "";
 }

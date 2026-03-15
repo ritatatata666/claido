@@ -44,7 +44,7 @@
           <div v-else class="clues-list">
             <div v-for="clue in store.discoveredClues" :key="clue.id" class="clue-item">
               <span class="clue-room-tag">{{ clue.room.toUpperCase() }}</span>
-              <p class="clue-text">{{ clue.text }}</p>
+              <p class="clue-text">{{ getDisplayedClueText(clue) }}</p>
             </div>
           </div>
         </div>
@@ -111,6 +111,12 @@ const rooms = computed(() => {
 
 function persistNotes() {
   // notes are v-model bound to store.notes; store handles persistence via gameStore actions
+}
+
+function getDisplayedClueText(clue) {
+  const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+  if (clue?.locked && isMaskedView) return 'Clue hidden by the saboteur.'
+  return clue?.text || ''
 }
 </script>
 
