@@ -250,7 +250,6 @@
                     ⚑ Submit evidence
                   </button>
                   <span v-if="searchSubmitResultById[log.id] === 'correct'" class="submit-correct">✓ Evidence logged</span>
-                  <span v-else-if="searchSubmitResultById[log.id] === 'locked'" class="submit-wrong">🔒 Room locked after too many wrong attempts.</span>
                   <span v-else-if="searchSubmitResultById[log.id] === 'wrong'" class="submit-wrong">✗ This row is not the whistleblower clue.</span>
                 </div>
               </div>
@@ -767,12 +766,7 @@ function applyFilter() {
   // explicit submit only; no auto evidence checks on filter changes
 }
 
-async function submitSearchEvidenceForLog(log) {
-  if (store.isRoomLocked('search')) {
-    searchSubmitResultById.value[log.id] = 'locked'
-    return
-  }
-
+function submitSearchEvidenceForLog(log) {
   const vaultWord = activeVaultWord4.value
   const whistleblowerUserId = activeWhistleblowerUserId.value
   const message = String(log?.message || '').toLowerCase()
@@ -784,13 +778,7 @@ async function submitSearchEvidenceForLog(log) {
 
   searchSubmitResultById.value[log.id] = isWhistle ? 'correct' : 'wrong'
 
-  if (!isWhistle) {
-    const penalty = await store.registerWrongAttempt('search')
-    if (penalty.locked) {
-      searchSubmitResultById.value[log.id] = 'locked'
-    }
-    return
-  }
+  if (!isWhistle) return
   store.addClue(
     'search-vault-word',
     'NovaSearch',

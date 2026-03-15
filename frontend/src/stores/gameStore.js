@@ -4,7 +4,19 @@ const API = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const STORAGE_KEY = 'claido_session'
 const DEFAULT_VILLAIN_TOKENS = 3
 const DEFAULT_GOOD_TOKENS = 2
-const DEFAULT_MAX_WRONG_ATTEMPTS = 5
+
+async function apiFetch(path, options = {}) {
+  const headers = options.headers || {}
+  try {
+    return await fetch(`${API}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    })
+  } catch {
+    throw new Error(`Cannot reach backend (${API || 'via /api proxy'}). Ensure backend is running.`)
+  }
+}
 
 function normalizeClue(clue = {}) {
   return {
@@ -14,20 +26,6 @@ function normalizeClue(clue = {}) {
     timestamp: clue.timestamp,
     locked: Boolean(clue.locked),
   }
-}
-
-function normalizeRoomName(roomName = '') {
-  return String(roomName).trim().toLowerCase()
-}
-
-function normalizeWrongAttemptMap(value) {
-  if (!value || typeof value !== 'object') return {}
-  return Object.entries(value).reduce((acc, [roomName, attemptCount]) => {
-    const room = normalizeRoomName(roomName)
-    const count = Number(attemptCount)
-    if (room) acc[room] = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
-    return acc
-  }, {})
 }
 
 function loadPersistedState() {
@@ -52,8 +50,6 @@ function persistState(state) {
       conversationHistories: state.conversationHistories,
       gameStartTime: state.gameStartTime,
       shellHistory: state.shellHistory,
-      shellOutputLines: state.shellOutputLines,
-      shellCwd: state.shellCwd,
       teamMode: state.teamMode,
       teamRole: state.teamRole,
       villainTokens: state.villainTokens,
@@ -67,9 +63,6 @@ function persistState(state) {
       investigatorName: state.investigatorName,
       leaderboard: state.leaderboard,
       notes: state.notes,
-      roomWrongAttempts: state.roomWrongAttempts,
-      penaltySecondsTotal: state.penaltySecondsTotal,
-      maxWrongAttemptsPerRoom: state.maxWrongAttemptsPerRoom,
     }))
   } catch {}
 }
@@ -120,8 +113,6 @@ function initializeNewSession(state, payload) {
   state.conversationHistories = {}
   state.roomCache = {}
   state.shellHistory = []
-  state.shellOutputLines = []
-  state.shellCwd = '/home/analyst'
   state.teamMembers = []
   state.teamActionLog = []
   state.lockedClueIds = []
@@ -129,9 +120,6 @@ function initializeNewSession(state, payload) {
   state.villainTokens = payload.villainTokens ?? DEFAULT_VILLAIN_TOKENS
   state.goodTokens = payload.goodTokens ?? DEFAULT_GOOD_TOKENS
   state.notes = ''
-  state.roomWrongAttempts = {}
-  state.penaltySecondsTotal = 0
-  state.maxWrongAttemptsPerRoom = DEFAULT_MAX_WRONG_ATTEMPTS
 }
 
 function syncClueLockStatus(state) {
@@ -156,8 +144,6 @@ export const useGameStore = defineStore('game', {
     clueNotification: null,
     roomCache: {},
     shellHistory: _persisted.shellHistory ?? [],
-    shellOutputLines: _persisted.shellOutputLines ?? [],
-    shellCwd: _persisted.shellCwd ?? '/home/analyst',
     teamMode: _persisted.teamMode ?? 'standard',
     teamRole: _persisted.teamRole ?? 'good',
     villainTokens: _persisted.villainTokens ?? DEFAULT_VILLAIN_TOKENS,
@@ -171,9 +157,6 @@ export const useGameStore = defineStore('game', {
     investigatorName: _persisted.investigatorName ?? '',
     leaderboard: normalizeLeaderboardEntries(_persisted.leaderboard ?? []),
     notes: _persisted.notes ?? '',
-    roomWrongAttempts: normalizeWrongAttemptMap(_persisted.roomWrongAttempts),
-    penaltySecondsTotal: Number(_persisted.penaltySecondsTotal ?? 0) || 0,
-    maxWrongAttemptsPerRoom: Number(_persisted.maxWrongAttemptsPerRoom ?? DEFAULT_MAX_WRONG_ATTEMPTS) || DEFAULT_MAX_WRONG_ATTEMPTS,
   }),
 
   getters: {
@@ -187,50 +170,39 @@ export const useGameStore = defineStore('game', {
     },
     elapsedSeconds: (state) => {
       if (!state.gameStartTime) return 0
-      return Math.floor((Date.now() - state.gameStartTime) / 1000) + Math.max(0, Number(state.penaltySecondsTotal) || 0)
+      return Math.floor((Date.now() - state.gameStartTime) / 1000)
     },
   },
 
   actions: {
-    applyAttemptPayload(payload, fallbackRoomName = null) {
-      if (!payload || typeof payload !== 'object') return
-
-      const normalizedMax = Number(payload.maxAttempts)
-      if (Number.isFinite(normalizedMax) && normalizedMax > 0) {
-        this.maxWrongAttemptsPerRoom = Math.floor(normalizedMax)
-      }
-
-      const normalizedPenaltyTotal = Number(payload.totalPenaltySeconds)
-      if (Number.isFinite(normalizedPenaltyTotal) && normalizedPenaltyTotal >= 0) {
-        this.penaltySecondsTotal = Math.floor(normalizedPenaltyTotal)
-      }
-
-      const roomName = normalizeRoomName(payload.roomName ?? fallbackRoomName)
-      if (!roomName) return
-      const wrongAttempts = Number(payload.wrongAttempts)
-      if (Number.isFinite(wrongAttempts) && wrongAttempts >= 0) {
-        this.roomWrongAttempts = {
-          ...this.roomWrongAttempts,
-          [roomName]: Math.floor(wrongAttempts),
-        }
-      }
+    resetState() {
+      this.sessionId = null
+      this.sessionState = null
+      this.currentRoom = null
+      this.discoveredClues = []
+      this.conversationHistories = {}
+      this.completedRooms = []
+      this.gameStartTime = null
+      this.clueNotification = null
+      this.roomCache = {}
+      this.shellHistory = []
+      this.teamMode = 'standard'
+      this.teamRole = 'good'
+      this.villainTokens = DEFAULT_VILLAIN_TOKENS
+      this.goodTokens = DEFAULT_GOOD_TOKENS
+      this.teamActionLog = []
+      this.teamMembers = []
+      this.joinCode = ''
+      this.playerId = null
+      this.lockedClueIds = []
+      this.protectedClueIds = []
+      this.investigatorName = ''
+      persistState(this)
     },
 
-    getWrongAttempts(roomName) {
-      const room = normalizeRoomName(roomName)
-      return Math.max(0, Number(this.roomWrongAttempts[room] ?? 0) || 0)
-    },
-
-    getAttemptsRemaining(roomName) {
-      return Math.max(0, this.maxWrongAttemptsPerRoom - this.getWrongAttempts(roomName))
-    },
-
-    isRoomLocked(roomName) {
-      return this.getWrongAttempts(roomName) >= this.maxWrongAttemptsPerRoom
-    },
-
-    async createSession(displayName = 'Investigator') {
-      const res = await fetch(`${API}/api/session/create`, {
+    async createSession(displayName) {
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
+      const res = await apiFetch('/api/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName }),
@@ -482,19 +454,8 @@ export const useGameStore = defineStore('game', {
       persistState(this)
     },
 
-    setShellOutputLines(lines) {
-      this.shellOutputLines = lines
-      persistState(this)
-    },
-
-    setShellCwd(cwd) {
-      this.shellCwd = cwd
-      persistState(this)
-    },
-
-    async validateAnswer(roomName, answer) {
-      const room = normalizeRoomName(roomName)
-      const res = await fetch(`${API}/api/session/${this.sessionId}/room/${room}/validate`, {
+    async validateAnswer(roomName, answer, extras = {}) {
+      const res = await apiFetch(`/api/session/${this.sessionId}/room/${roomName}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -503,25 +464,10 @@ export const useGameStore = defineStore('game', {
         }),
       })
       const payload = await res.json()
-      this.applyAttemptPayload(payload, room)
       if (Array.isArray(payload.leaderboard)) {
         this.leaderboard = normalizeLeaderboardEntries(payload.leaderboard)
+        persistState(this)
       }
-      persistState(this)
-      return payload
-    },
-
-    async registerWrongAttempt(roomName) {
-      const room = normalizeRoomName(roomName)
-      const res = await fetch(`${API}/api/session/${this.sessionId}/room/${room}/wrong-attempt`, {
-        method: 'POST',
-      })
-      const payload = await res.json()
-      if (!res.ok) {
-        throw new Error(payload?.error || `Failed to record wrong attempt in ${room}.`)
-      }
-      this.applyAttemptPayload(payload, room)
-      persistState(this)
       return payload
     },
   },

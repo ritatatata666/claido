@@ -12,18 +12,6 @@ namespace Claido.Controllers;
 [Authorize]
 public class RoomController : ControllerBase
 {
-    private const int MaxWrongAttemptsPerRoom = 5;
-    private static readonly HashSet<string> RateLimitedRooms = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "shell",
-        "database",
-        "mail",
-        "wiki",
-        "search",
-        "onion",
-        "vault"
-    };
-
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
     private readonly UserStore _users;
@@ -82,28 +70,8 @@ public class RoomController : ControllerBase
         if (!_sessions.TryGetValue(sessionId, out var session))
             return NotFound(new { error = "Session not found." });
 
-        roomName = NormalizeRoomName(roomName);
-        var answer = (req.Answer ?? string.Empty).Trim().ToLowerInvariant();
-
-        if (!RateLimitedRooms.Contains(roomName))
-            return BadRequest(new { error = $"Room '{roomName}' does not support answer validation." });
-
-        var currentAttemptState = GetAttemptState(session, roomName);
-        if (currentAttemptState.locked)
-        {
-            return Ok(new
-            {
-                correct = false,
-                locked = true,
-                hint = BuildLockedHint(roomName),
-                leaderboard = (object?)null,
-                wrongAttempts = currentAttemptState.wrongAttempts,
-                attemptsRemaining = currentAttemptState.attemptsRemaining,
-                penaltySecondsAdded = 0,
-                totalPenaltySeconds = currentAttemptState.totalPenaltySeconds,
-                maxAttempts = MaxWrongAttemptsPerRoom,
-            });
-        }
+        roomName = roomName.ToLower();
+        var answer = req.Answer.Trim().ToLower();
 
         bool correct = roomName switch
         {
@@ -115,74 +83,40 @@ public class RoomController : ControllerBase
             _ => false
         };
 
-        object? leaderboard = null;
+        string? hint = correct ? null : roomName switch
+        {
+            "vault" => "The passphrase is four words separated by spaces. Look in your clues.",
+            _ => "Not quite. Keep searching the room for clues."
+        };
+
+        if (correct && roomName == "vault" && !session.HistoryRecorded)
+        {
+            var elapsed = req.ElapsedSeconds.GetValueOrDefault((int)(DateTime.UtcNow - session.StartedAtUtc).TotalSeconds);
+            var points = req.Points.GetValueOrDefault(Math.Max(0, 5000 - elapsed * 4));
+            _users.AddHistory(userId, new GameHistoryEntry
+            {
+                SessionId = session.SessionId,
+                StartedAtUtc = session.StartedAtUtc,
+                CompletedAtUtc = DateTime.UtcNow,
+                ElapsedSeconds = Math.Max(0, elapsed),
+                Points = Math.Max(0, points),
+                WrongAnswers = Math.Max(0, req.WrongAnswers.GetValueOrDefault(0)),
+                TimePenaltySeconds = Math.Max(0, req.TimePenaltySeconds.GetValueOrDefault(0)),
+                TeamMode = session.TeamMode,
+                CaseFile = $"CASE {session.SessionId.ToString()[..8].ToUpperInvariant()}",
+                CulpritName = session.Culprit?.Name ?? "",
+                Questions = BuildQuestionReview(session),
+            });
+            session.HistoryRecorded = true;
+        }
+        IEnumerable<object>? leaderboard = null;
+
         if (correct && roomName == "vault")
         {
-            leaderboard = RecordSolve(session, userId);
+            leaderboard = RecordSolve(session);
         }
 
-        if (correct)
-        {
-            return Ok(new
-            {
-                correct = true,
-                locked = false,
-                hint = (string?)null,
-                leaderboard,
-                wrongAttempts = currentAttemptState.wrongAttempts,
-                attemptsRemaining = currentAttemptState.attemptsRemaining,
-                penaltySecondsAdded = 0,
-                totalPenaltySeconds = currentAttemptState.totalPenaltySeconds,
-                maxAttempts = MaxWrongAttemptsPerRoom,
-            });
-        }
-
-        var failedAttemptState = ApplyWrongAttempt(session, roomName);
-        var hint = failedAttemptState.locked
-            ? BuildLockedHint(roomName)
-            : roomName switch
-            {
-                "vault" => "The passphrase is four words separated by spaces. Look in your clues.",
-                _ => "Not quite. Keep searching the room for clues."
-            };
-
-        return Ok(new
-        {
-            correct = false,
-            locked = failedAttemptState.locked,
-            hint,
-            leaderboard = (object?)null,
-            wrongAttempts = failedAttemptState.wrongAttempts,
-            attemptsRemaining = failedAttemptState.attemptsRemaining,
-            penaltySecondsAdded = failedAttemptState.penaltySecondsAdded,
-            totalPenaltySeconds = failedAttemptState.totalPenaltySeconds,
-            maxAttempts = MaxWrongAttemptsPerRoom,
-        });
-    }
-
-    [HttpPost("wrong-attempt")]
-    public IActionResult RegisterWrongAttempt(Guid sessionId, string roomName)
-    {
-        if (!_sessions.TryGetValue(sessionId, out var session))
-            return NotFound(new { error = "Session not found." });
-
-        roomName = NormalizeRoomName(roomName);
-        if (!RateLimitedRooms.Contains(roomName))
-            return BadRequest(new { error = $"Room '{roomName}' does not support attempt tracking." });
-
-        var failedAttemptState = ApplyWrongAttempt(session, roomName);
-
-        return Ok(new
-        {
-            roomName,
-            locked = failedAttemptState.locked,
-            wrongAttempts = failedAttemptState.wrongAttempts,
-            attemptsRemaining = failedAttemptState.attemptsRemaining,
-            penaltySecondsAdded = failedAttemptState.penaltySecondsAdded,
-            totalPenaltySeconds = failedAttemptState.totalPenaltySeconds,
-            maxAttempts = MaxWrongAttemptsPerRoom,
-            hint = failedAttemptState.locked ? BuildLockedHint(roomName) : (string?)null,
-        });
+        return Ok(new { correct, hint, leaderboard });
     }
 
     private static bool ValidateVaultAnswer(string answer, SessionState session)
@@ -243,38 +177,20 @@ public class RoomController : ControllerBase
         };
     }
 
-    private IEnumerable<object> RecordSolve(SessionState session, Guid userId)
+    private IEnumerable<object> RecordSolve(SessionState session)
     {
         lock (session)
         {
             if (!session.CompletedAtUtc.HasValue)
             {
-                var completedAt = DateTime.UtcNow;
-                session.CompletedAtUtc = completedAt;
-
-                var elapsedSeconds = (int)Math.Round((completedAt - session.StartedAtUtc).TotalSeconds);
-                var solveSeconds = Math.Max(1, elapsedSeconds + Math.Max(0, session.PenaltySecondsTotal));
-
-                var totalWrongAnswers = session.WrongAttemptsByRoom.Values.Sum();
-
-                _users.AddHistory(userId, new GameHistoryEntry
-                {
-                    SessionId = session.SessionId,
-                    StartedAtUtc = session.StartedAtUtc,
-                    CompletedAtUtc = completedAt,
-                    ElapsedSeconds = solveSeconds,
-                    Points = Math.Max(0, 1000 - (totalWrongAnswers * 50)),
-                    WrongAnswers = totalWrongAnswers,
-                    TimePenaltySeconds = Math.Max(0, session.PenaltySecondsTotal),
-                    TeamMode = session.TeamMode,
-                    CaseFile = "PROJECT NOVA INCIDENT",
-                    CulpritName = session.Culprit?.Name ?? "",
-                    Questions = BuildQuestionReview(session),
-                });
+                session.CompletedAtUtc = DateTime.UtcNow;
             }
         }
 
-        return _users.GetLeaderboard()
+        return _users.GetLeaderboard(5)
+            .OrderBy(entry => entry.SolveSeconds)
+            .ThenBy(entry => entry.CompletedAtUtc)
+            .Take(5)
             .Select(entry => new
             {
                 displayName = entry.DisplayName,
@@ -283,88 +199,4 @@ public class RoomController : ControllerBase
             });
     }
 
-    private static string ResolveDisplayName(SessionState session, Guid? memberId)
-    {
-        if (memberId.HasValue)
-        {
-            var member = session.TeamMembers.FirstOrDefault(item => item.MemberId == memberId.Value);
-            if (member != null && !string.IsNullOrWhiteSpace(member.DisplayName))
-                return member.DisplayName.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
-            return session.InvestigatorName.Trim();
-
-        return "Investigator";
-    }
-
-    private static string NormalizeRoomName(string roomName)
-    {
-        return (roomName ?? string.Empty).Trim().ToLowerInvariant();
-    }
-
-    private static string BuildLockedHint(string roomName)
-    {
-        return $"{GetRoomDisplayName(roomName)} locked: maximum failed attempts reached.";
-    }
-
-    private static string GetRoomDisplayName(string roomName)
-    {
-        return roomName switch
-        {
-            "shell" => "NovaShell",
-            "database" => "NovaCrime DB",
-            "mail" => "NovaMail",
-            "wiki" => "NovaWiki",
-            "search" => "NovaSearch",
-            "onion" => "Onion room",
-            "vault" => "Vault",
-            _ => roomName,
-        };
-    }
-
-    private static (int wrongAttempts, int attemptsRemaining, bool locked, int totalPenaltySeconds) GetAttemptState(SessionState session, string roomName)
-    {
-        lock (session)
-        {
-            session.WrongAttemptsByRoom.TryGetValue(roomName, out var wrongAttempts);
-            wrongAttempts = Math.Max(0, wrongAttempts);
-            return (
-                wrongAttempts,
-                Math.Max(0, MaxWrongAttemptsPerRoom - wrongAttempts),
-                wrongAttempts >= MaxWrongAttemptsPerRoom,
-                Math.Max(0, session.PenaltySecondsTotal));
-        }
-    }
-
-    private static (int wrongAttempts, int attemptsRemaining, bool locked, int penaltySecondsAdded, int totalPenaltySeconds) ApplyWrongAttempt(SessionState session, string roomName)
-    {
-        lock (session)
-        {
-            session.WrongAttemptsByRoom.TryGetValue(roomName, out var currentAttempts);
-            currentAttempts = Math.Max(0, currentAttempts);
-
-            if (currentAttempts >= MaxWrongAttemptsPerRoom)
-            {
-                return (
-                    currentAttempts,
-                    0,
-                    true,
-                    0,
-                    Math.Max(0, session.PenaltySecondsTotal));
-            }
-
-            var updatedAttempts = currentAttempts + 1;
-            var penaltySecondsAdded = updatedAttempts;
-            session.WrongAttemptsByRoom[roomName] = updatedAttempts;
-            session.PenaltySecondsTotal += penaltySecondsAdded;
-
-            return (
-                updatedAttempts,
-                Math.Max(0, MaxWrongAttemptsPerRoom - updatedAttempts),
-                updatedAttempts >= MaxWrongAttemptsPerRoom,
-                penaltySecondsAdded,
-                Math.Max(0, session.PenaltySecondsTotal));
-        }
-    }
 }

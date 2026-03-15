@@ -85,28 +85,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore.js'
 
 const store = useGameStore()
 const menuOpen = ref(false)
-const elapsed = ref(0)
-let timerInterval = null
-
-onMounted(() => {
-  timerInterval = setInterval(() => {
-    if (store.gameStartTime) {
-      elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
-    }
-  }, 1000)
-})
-
-onUnmounted(() => {
-  clearInterval(timerInterval)
-})
 
 const formattedTime = computed(() => {
-  const s = elapsed.value
+  const s = store.elapsedSeconds
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const sec = s % 60

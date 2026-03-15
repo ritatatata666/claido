@@ -241,7 +241,7 @@ async function submit() {
       timePenaltySeconds: 0,
     })
     if (res.correct) {
-      solveTime.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
+      solveTime.value = elapsed
       store.markRoomComplete('vault')
       solved.value = true
       winModalVisible.value = true

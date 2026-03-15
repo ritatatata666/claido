@@ -223,22 +223,6 @@
       "passwordSaltBase64": "nRYRYM20uiefGu\u002B2wBd58Q==",
       "createdAtUtc": "2026-03-15T04:37:04.860892Z",
       "history": []
-    },
-    {
-      "userId": "76388c35-2c52-4eba-b63f-89d38ad7a07a",
-      "username": "Anneliese",
-      "passwordHashBase64": "ugoT6AwB4CYzgf42RDusoc0ruoE81dqQm5piYL58Bys=",
-      "passwordSaltBase64": "Y\u002B4LJds0wwh5C5bN/y\u002BwZg==",
-      "createdAtUtc": "2026-03-15T05:18:26.626256Z",
-      "history": []
-    },
-    {
-      "userId": "f10fa677-71d3-4900-b17f-b9f076bbea49",
-      "username": "testuser",
-      "passwordHashBase64": "7pKyzhKr06ZoLfe3wC5c47Ievdiie1qtBuya2JimSCs=",
-      "passwordSaltBase64": "UNH7k5nGO9BAGApTuJC0QQ==",
-      "createdAtUtc": "2026-03-15T05:19:13.591485Z",
-      "history": []
     }
   ]
 }
