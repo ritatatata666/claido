@@ -31,6 +31,8 @@ const commandHistory = ref([])
 let historyIndex = 0
 const activeVaultWord1 = ref('')
 const activeCulpritId = ref(1001)
+const outputLines = [] // tracks all terminal output for persistence
+let isRestoring = false
 
 onMounted(async () => {
   const vaultWord1 = resolveVaultWord1()
@@ -42,6 +44,9 @@ onMounted(async () => {
   const restoredHistory = Array.isArray(store.shellHistory) ? store.shellHistory : []
   commandHistory.value = [...restoredHistory]
   historyIndex = commandHistory.value.length
+
+  // Restore cwd
+  cwd = store.shellCwd || '/home/analyst'
 
   // Load room content
   try {
@@ -76,21 +81,58 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(() => fitAddon.fit())
   resizeObserver.observe(containerEl.value)
 
-  // Welcome message
-  writelnTerminal('\x1b[32m╔══════════════════════════════════════════════════╗\x1b[0m')
-  writelnTerminal('\x1b[32m║          NovaCorp Internal Shell v3.1.4          ║\x1b[0m')
-  writelnTerminal('\x1b[32m║     AUTHORISED ACCESS ONLY — ALL ACTIVITY LOGGED ║\x1b[0m')
-  writelnTerminal('\x1b[32m╚══════════════════════════════════════════════════╝\x1b[0m')
-  writelnTerminal('')
-  writelnTerminal('\x1b[33mType "help" for available commands.\x1b[0m')
-  writelnTerminal('')
-  prompt()
+  // Restore previous terminal output or show welcome
+  const savedLines = Array.isArray(store.shellOutputLines) ? store.shellOutputLines : []
+  if (savedLines.length > 0) {
+    isRestoring = true
+    for (const line of savedLines) {
+      term.writeln(line)
+      outputLines.push(line)
+    }
+    isRestoring = false
+    prompt()
+  } else {
+    writelnTerminal('\x1b[32m╔══════════════════════════════════════════════════╗\x1b[0m')
+    writelnTerminal('\x1b[32m║          NovaCorp Internal Shell v3.1.4          ║\x1b[0m')
+    writelnTerminal('\x1b[32m║     AUTHORISED ACCESS ONLY — ALL ACTIVITY LOGGED ║\x1b[0m')
+    writelnTerminal('\x1b[32m╚══════════════════════════════════════════════════╝\x1b[0m')
+    writelnTerminal('')
+    writelnTerminal('\x1b[33mType "help" for available commands.\x1b[0m')
+    writelnTerminal('')
+    prompt()
+  }
+
+  // Let Cmd/Ctrl+C (copy) and Cmd/Ctrl+V (paste) pass through to the browser
+  term.attachCustomKeyEventHandler((e) => {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'c')) {
+      return false // false = don't let xterm handle it, let browser handle it
+    }
+    return true
+  })
+
+  // Listen for paste on the xterm textarea (where the browser fires clipboard events)
+  const xtermTextarea = containerEl.value.querySelector('.xterm-helper-textarea')
+  if (xtermTextarea) {
+    xtermTextarea.addEventListener('paste', (e) => {
+      e.preventDefault()
+      const text = (e.clipboardData || window.clipboardData)?.getData('text') || ''
+      const line = text.split(/[\r\n]/)[0] || ''
+      if (!line) return
+      inputBuffer += line
+      writeTerminal(line)
+      historyIndex = commandHistory.value.length
+    })
+  }
 
   term.onKey(({ key, domEvent }) => {
     domEvent.preventDefault()
     const domKey = domEvent.key
+
     if (domEvent.keyCode === 13) {
-      // Enter
+      // Enter — capture prompt + input as a single output line for persistence
+      const promptStr = buildPromptString()
+      outputLines.push(promptStr + inputBuffer)
+      if (outputLines.length > 500) outputLines.splice(0, outputLines.length - 500)
       const cmd = inputBuffer.trim()
       writelnTerminal('')
       if (cmd) {
@@ -114,7 +156,7 @@ onMounted(async () => {
     }
 
     if (domEvent.ctrlKey && domKey.toLowerCase() === 'c') {
-      // Ctrl+C
+      // Ctrl+C (no meta) — cancel current input
       writelnTerminal('^C')
       inputBuffer = ''
       prompt()
@@ -151,7 +193,6 @@ onMounted(async () => {
     }
 
     if ((domKey && domKey.length === 1) || domKey === '\t') {
-      // Printable chars — also handles paste (multi-char data)
       inputBuffer += key
       writeTerminal(key)
       historyIndex = commandHistory.value.length
@@ -160,6 +201,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // Persist terminal output and cwd before leaving
+  store.setShellOutputLines([...outputLines])
+  store.setShellCwd(cwd)
   resizeObserver?.disconnect()
   term?.dispose()
 })
@@ -170,11 +214,15 @@ function clearCurrentInput() {
   inputBuffer = ''
 }
 
-function prompt() {
+function buildPromptString() {
   const user = filesystem?.username || 'analyst'
   const host = filesystem?.hostname || 'novacorp-srv-01'
   const shortCwd = cwd.replace(`/home/${user}`, '~')
-  writeTerminal(`\x1b[32m${user}@${host}\x1b[0m:\x1b[34m${shortCwd}\x1b[0m$ `)
+  return `\x1b[32m${user}@${host}\x1b[0m:\x1b[34m${shortCwd}\x1b[0m$ `
+}
+
+function prompt() {
+  writeTerminal(buildPromptString())
 }
 
 function writeTerminal(data) {
@@ -183,6 +231,11 @@ function writeTerminal(data) {
 
 function writelnTerminal(data = '') {
   term.writeln(data)
+  if (!isRestoring) {
+    outputLines.push(data)
+    // Cap stored lines to prevent localStorage bloat
+    if (outputLines.length > 500) outputLines.splice(0, outputLines.length - 500)
+  }
 }
 
 function handleCommand(cmd) {
@@ -209,7 +262,7 @@ function handleCommand(cmd) {
       break
 
     case 'ls':
-      cmdLs(args[0])
+      cmdLs(args)
       break
 
     case 'cat':
@@ -284,7 +337,7 @@ function handleCommand(cmd) {
       break
 
     case 'base64':
-      cmdBase64(args)
+      void cmdBase64(args)
       break
 
     case 'hint':
@@ -328,8 +381,10 @@ function resolvePath(p) {
   return `${cwd}/${p}`.replace('//', '/')
 }
 
-function cmdLs(arg) {
-  const path = resolvePath(arg)
+function cmdLs(args) {
+  const showAll = args.includes('-a') || args.includes('-la') || args.includes('-al')
+  const pathArg = args.find(a => !a.startsWith('-'))
+  const path = resolvePath(pathArg)
   const dirs = filesystem?.dirs || []
   const files = filesystem?.files || {}
 
@@ -338,7 +393,9 @@ function cmdLs(arg) {
   // Sub-dirs
   dirs.forEach(d => {
     if (d !== path && d.startsWith(path + '/') && !d.slice(path.length + 1).includes('/')) {
-      children.push({ name: d.split('/').pop(), type: 'dir' })
+      const name = d.split('/').pop()
+      if (!showAll && name.startsWith('.')) return
+      children.push({ name, type: 'dir' })
     }
   })
 
@@ -346,12 +403,18 @@ function cmdLs(arg) {
   Object.keys(files).forEach(f => {
     const dir = f.substring(0, f.lastIndexOf('/'))
     if (dir === path) {
-      children.push({ name: f.split('/').pop(), type: 'file' })
+      const name = f.split('/').pop()
+      if (!showAll && name.startsWith('.')) return
+      children.push({ name, type: 'file' })
     }
   })
 
   if (children.length === 0) {
-    writelnTerminal(`ls: cannot access '${pathArg || path}': No such file or directory`)
+    if (!showAll) {
+      writelnTerminal(`(empty — try ls -a for hidden files)`)
+    } else {
+      writelnTerminal(`ls: cannot access '${pathArg || path}': No such file or directory`)
+    }
     return
   }
 
@@ -416,7 +479,12 @@ function cmdCat(arg) {
   writelnTerminal('')
 }
 
-function cmdBase64(args) {
+async function cmdBase64(args) {
+  if (store.isRoomLocked('shell')) {
+    writelnTerminal('\x1b[31mNovaShell locked: maximum failed attempts reached.\x1b[0m')
+    return
+  }
+
   const flagIdx = args.indexOf('-d')
   if (flagIdx < 0) {
     writelnTerminal('Usage: base64 -d <value>')
@@ -439,9 +507,23 @@ function cmdBase64(args) {
         `Found in .env: VAULT_WORD = ${decoded}`
       )
       store.markRoomComplete('shell')
+      return
     }
+
+    const penalty = await store.registerWrongAttempt('shell')
+    if (penalty.locked) {
+      writelnTerminal('\x1b[31mNovaShell locked: maximum failed attempts reached.\x1b[0m')
+      return
+    }
+    writelnTerminal(`\x1b[33mIncorrect vault keyword. Time penalty: +${penalty.penaltySecondsAdded}s. Attempts left: ${penalty.attemptsRemaining}/${penalty.maxAttempts}.\x1b[0m`)
   } catch (e) {
     writelnTerminal(`\x1b[31mbase64: invalid input — not valid base64\x1b[0m`)
+    const penalty = await store.registerWrongAttempt('shell')
+    if (penalty.locked) {
+      writelnTerminal('\x1b[31mNovaShell locked: maximum failed attempts reached.\x1b[0m')
+    } else {
+      writelnTerminal(`\x1b[33mInvalid attempt penalty: +${penalty.penaltySecondsAdded}s. Attempts left: ${penalty.attemptsRemaining}/${penalty.maxAttempts}.\x1b[0m`)
+    }
   }
 }
 

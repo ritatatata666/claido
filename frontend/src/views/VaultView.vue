@@ -177,7 +177,7 @@ async function submit() {
   try {
     const res = await store.validateAnswer('vault', answer)
     if (res.correct) {
-      solveTime.value = Math.floor((Date.now() - store.gameStartTime) / 1000)
+      solveTime.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
       store.markRoomComplete('vault')
       solved.value = true
     } else {

@@ -154,7 +154,12 @@ function runQuery() {
   }
 }
 
-function submitDatabaseEvidence() {
+async function submitDatabaseEvidence() {
+  if (store.isRoomLocked('database')) {
+    evidenceStatus.value = 'Room locked after too many wrong attempts.'
+    return
+  }
+
   if (!results.value) {
     evidenceStatus.value = 'Run a query first.'
     return
@@ -164,6 +169,15 @@ function submitDatabaseEvidence() {
   evidenceStatus.value = found
     ? 'Evidence logged. The vault word trail is now complete.'
     : 'No compelling evidence in those results. Focus on incidents or messages.'
+
+  if (!found) {
+    const penalty = await store.registerWrongAttempt('database')
+    if (penalty.locked) {
+      evidenceStatus.value = 'Room locked after too many wrong attempts.'
+    } else {
+      evidenceStatus.value += ` Time penalty: +${penalty.penaltySecondsAdded}s`
+    }
+  }
 }
 
 function checkForClue(columns, values) {
