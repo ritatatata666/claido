@@ -1,86 +1,14 @@
 <template>
-  <div class="hub">
+  <div class="hub" :class="{ 'is-team': store.teamMode === 'team' }">
     <div class="hub-board">
-      <!-- Red Sticky Note - moved to front -->
-      <div class="sticky-note sticky-note--medium sticky-note--right sticky-note--front">
-        <img :src="redPinImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">VAULT<br/>4 WORDS</div>
-      </div>
 
-      <!-- New Sticky Note -->
-      <div class="sticky-note sticky-note--small sticky-note--new sticky-note--front">
-        <img :src="goldPinImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">FOLLOW<br/>LEADS</div>
-      </div>
-
-      <!-- Missing Person Poster - top left -->
-      <aside class="corner-prop corner-prop--left-top missing-poster">
-        <img :src="redPinImg" alt="" class="prop-pin-image prop-pin-image--red" />
-        <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
-      </aside>
-
-      <!-- Skull Evidence - left bottom -->
-      <aside class="corner-prop corner-prop--left-bottom evidence-photo">
-        <img :src="bluePinImg" alt="" class="prop-pin-image prop-pin-image--blue" />
-        <div class="evidence-photo__frame">
-          <img :src="skullEvidenceImg" alt="" class="prop-image prop-image--photo" />
-          <div class="evidence-caption">SCENE 03 · UNRESOLVED</div>
-        </div>
-      </aside>
-
-      <!-- Unknown Portrait - right top -->
-      <aside class="corner-prop corner-prop--right-top evidence-photo evidence-photo--portrait">
-        <img :src="pinkPinImg" alt="" class="prop-pin-image prop-pin-image--pink" />
-        <div class="evidence-photo__frame evidence-photo__frame--portrait">
-          <img :src="unknownPortraitImg" alt="" class="prop-image prop-image--portrait" />
-          <div class="evidence-caption">PERSON OF INTEREST</div>
-        </div>
-      </aside>
-
-      <!-- Error Image - right bottom, bigger -->
-      <aside class="corner-prop corner-prop--right-bottom error-evidence">
-        <img :src="goldPinImg" alt="" class="prop-pin-image prop-pin-image--gold" />
-        <div class="evidence-photo__frame evidence-photo__frame--large">
-          <img :src="errorPosterImg" alt="" class="prop-image prop-image--large" />
-          <div class="evidence-caption">ERROR LOG EXTRACT</div>
-        </div>
-      </aside>
-
-      <!-- Missing Image as normal photo - center left -->
-      <aside class="corner-prop corner-prop--center-left missing-normal">
-        <img :src="redPinLeftImg" alt="" class="prop-pin-image prop-pin-image--red-left" />
-        <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
-      </aside>
-
-      <!-- Sticky Notes -->
-      <div class="sticky-note sticky-note--small sticky-note--top">
-        <img :src="bluePinLeftImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">CHECK<br/>LOGS</div>
-      </div>
-      
-      <div class="sticky-note sticky-note--large sticky-note--bottom sticky-note--front">
-        <img :src="pinkPinImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">INVESTIGATE<br/>ALL ROOMS<br/>FOR CLUES</div>
-      </div>
-
-      <header class="hub-topbar evidence-strip" @click="menuOpen = false">
-        <div class="hub-logo" @click.stop="menuOpen = !menuOpen">
+      <header class="hub-topbar evidence-strip">
+        <div class="hub-logo">
           <span class="logo-icon">🔐</span>
           <div class="logo-copy">
             <span class="logo-text">CLAIDO</span>
-            <span class="logo-sub">Caseboard <span class="logo-arrow">{{ menuOpen ? '▲' : '▼' }}</span></span>
+            <span class="logo-sub">Caseboard</span>
           </div>
-          <Transition name="hub-dropdown">
-            <div v-if="menuOpen" class="hub-logo-menu" @click.stop>
-              <div class="hub-menu-item" @click="router.push('/report'); menuOpen = false">
-                <span class="hub-menu-icon">📋</span> Case Report
-              </div>
-            </div>
-          </Transition>
         </div>
 
         <div class="hub-progress evidence-mini-note">
@@ -104,7 +32,84 @@
 
     <TeamModePanel />
 
-      <main class="hub-main">
+      <div class="hub-content-area">
+      <!-- Red Sticky Note - moved to front -->
+      <div class="sticky-note sticky-note--medium sticky-note--right sticky-note--front">
+        <img :src="redPinImg" alt="" class="sticky-pin" />
+        <img :src="stickyNoteImg" alt="" class="sticky-image" />
+        <div class="sticky-text">VAULT<br/>4 WORDS</div>
+      </div>
+
+        <!-- New Sticky Note -->
+        <div class="sticky-note sticky-note--small sticky-note--new sticky-note--front">
+          <img :src="goldPinImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">FOLLOW<br/>LEADS</div>
+        </div>
+
+        <!-- Missing Person Poster - top left -->
+        <aside class="corner-prop corner-prop--left-top missing-poster">
+          <img :src="redPinImg" alt="" class="prop-pin-image prop-pin-image--red" />
+          <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
+        </aside>
+
+        <!-- Skull Evidence - left bottom -->
+        <aside class="corner-prop corner-prop--left-bottom evidence-photo">
+          <img :src="bluePinImg" alt="" class="prop-pin-image prop-pin-image--blue" />
+          <div class="evidence-photo__frame">
+            <img :src="skullEvidenceImg" alt="" class="prop-image prop-image--photo" />
+            <div class="evidence-caption">SCENE 03 · UNRESOLVED</div>
+          </div>
+        </aside>
+
+        <!-- Unknown Portrait - right top -->
+        <aside class="corner-prop corner-prop--right-top evidence-photo evidence-photo--portrait">
+          <img :src="pinkPinImg" alt="" class="prop-pin-image prop-pin-image--pink" />
+          <div class="evidence-photo__frame evidence-photo__frame--portrait">
+            <img :src="unknownPortraitImg" alt="" class="prop-image prop-image--portrait" />
+            <div class="evidence-caption">PERSON OF INTEREST</div>
+          </div>
+        </aside>
+
+        <!-- Error Image - right bottom, bigger -->
+        <aside class="corner-prop corner-prop--right-bottom error-evidence">
+          <img :src="goldPinImg" alt="" class="prop-pin-image prop-pin-image--gold" />
+          <div class="evidence-photo__frame evidence-photo__frame--large">
+            <img :src="errorPosterImg" alt="" class="prop-image prop-image--large" />
+            <div class="evidence-caption">ERROR LOG EXTRACT</div>
+          </div>
+        </aside>
+
+        <!-- Missing Image as normal photo - center left -->
+        <aside class="corner-prop corner-prop--center-left missing-normal">
+          <img :src="redPinLeftImg" alt="" class="prop-pin-image prop-pin-image--red-left" />
+          <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
+        </aside>
+
+        <!-- Sticky Notes -->
+        <div class="sticky-note sticky-note--small sticky-note--top">
+          <img :src="bluePinLeftImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">CHECK<br/>LOGS</div>
+        </div>
+
+        <div class="sticky-note sticky-note--large sticky-note--bottom sticky-note--front">
+          <img :src="pinkPinImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">INVESTIGATE<br/>ALL ROOMS<br/>FOR CLUES</div>
+        </div>
+
+      <div class="board-overlay" aria-hidden="true">
+        <span class="overlay-thread overlay-thread--shell-db"></span>
+        <span class="overlay-thread overlay-thread--shell-mail vertical-line"></span>
+        <span class="overlay-thread overlay-thread--mail-wiki"></span>
+        <span class="overlay-thread overlay-thread--wiki-onion"></span>
+        <span class="overlay-thread overlay-thread--search-onion"></span>
+        <span class="overlay-thread overlay-thread--left-search"></span>
+        <span class="overlay-thread overlay-thread--mail-db"></span>
+      </div>
+
+        <main class="hub-main">
         <section class="summary-row">
           <article class="summary-note evidence-card">
             <p class="section-label">Board Summary</p>
@@ -164,18 +169,6 @@
           </div>
         </section>
       </main>
-
-      <div class="board-overlay" aria-hidden="true">
-        <span class="overlay-thread overlay-thread--one"></span>
-        <span class="overlay-thread overlay-thread--two"></span>
-        <span class="overlay-thread overlay-thread--three vertical-line"></span>
-        <span class="overlay-thread overlay-thread--four"></span>
-        <span class="overlay-thread overlay-thread--five"></span>
-        <span class="overlay-thread overlay-thread--six"></span>
-        <span class="overlay-thread overlay-thread--seven vertical-line"></span>
-        <span class="overlay-thread overlay-thread--eight"></span>
-        <span class="overlay-thread overlay-thread--nine vertical-line"></span>
-
       </div>
     </div>
   </div>
@@ -323,31 +316,62 @@ const formattedTime = computed(() => {
   min-height: 100vh;
   padding: 20px 16px 30px;
   overflow-y: auto;
+  position: relative;
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.03) 0px,
-      rgba(255, 255, 255, 0.03) 1px,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
       transparent 1px,
       transparent 8px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.015) 0px,
-      rgba(255, 255, 255, 0.015) 1px,
+      rgba(255, 255, 255, 0.01) 0px,
+      rgba(255, 255, 255, 0.01) 1px,
       transparent 1px,
       transparent 8px
     ),
-    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+    linear-gradient(135deg, #392317 0%, #2b1a12 35%, #1f130d 70%, #140b08 100%);
+}
+
+.hub::before,
+.hub::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hub::before {
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0 1px, transparent 1px 3px),
+    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px),
+    radial-gradient(circle at 76% 68%, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px);
+  background-size: 100% 3px, 180px 180px, 210px 210px;
+  mix-blend-mode: soft-light;
+  opacity: 0.28;
+  z-index: 0;
+}
+
+.hub::after {
+  background: radial-gradient(circle at center, transparent 56%, rgba(0, 0, 0, 0.42) 100%);
+  opacity: 0.5;
+  z-index: 0;
 }
 
 .hub-board {
   position: relative;
+  z-index: 1;
   width: min(1000px, 96%);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.hub-content-area {
+  position: relative;
 }
 
 .board-overlay {
@@ -360,7 +384,7 @@ const formattedTime = computed(() => {
 
 .corner-prop {
   position: absolute;
-  z-index: 0;
+  z-index: 10;
   pointer-events: none;
 }
 
@@ -392,7 +416,374 @@ const formattedTime = computed(() => {
   top: 320px;
   left: -90px;
   transform: rotate(8deg);
+  z-index: 30;
+}
+
+.prop-pin-image {
+  position: absolute;
+  top: -12px;
+  left: 18px;
+  width: 20px;
+  height: 20px;
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.prop-pin-image--red-left {
+  left: 16px;
+}
+
+.prop-pin-image--pink {
+  top: -10px;
+  left: 20px;
+}
+
+.prop-pin-image--gold {
+  top: -14px;
+  left: 22px;
+}
+
+.missing-poster,
+.missing-normal {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.evidence-photo__frame {
+  background: linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(236, 223, 203, 0.96));
+  border: 1px solid rgba(89, 65, 42, 0.2);
+  box-shadow: var(--paper-shadow);
+}
+
+.missing-poster {
+  width: auto;
+  max-width: 120px;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.missing-normal {
+  width: auto;
+  max-width: 140px;
+  padding: 0;
+  border-radius: 3px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.evidence-photo__frame {
+  width: 96px;
+  height: 142px;
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.evidence-photo__frame--portrait {
+  width: 108px;
+  height: 152px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.evidence-photo__frame--large {
+  width: 140px;
+  height: 180px;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.prop-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  border: 1px solid rgba(108, 81, 55, 0.2);
+  filter: saturate(0.86) contrast(1.03);
+}
+
+.prop-image--poster {
+  min-height: 120px;
+  object-fit: cover;
+}
+
+.prop-image--poster-full {
+  width: 100%;
+  height: auto;
+  min-height: unset;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.prop-image--normal {
+  min-height: 100px;
+  object-fit: cover;
+}
+
+.prop-image--photo {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+}
+
+.prop-image--portrait {
+  width: 88px;
+  height: 106px;
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+.prop-image--large {
+  width: 120px;
+  height: 140px;
+  object-fit: cover;
+  margin: 0 auto;
+}
+
+/* Sticky Notes */
+.sticky-note {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.sticky-note--small {
+  width: 60px;
+  height: 60px;
+}
+
+.sticky-note--medium {
+  width: 80px;
+  height: 80px;
+}
+
+.sticky-note--large {
+  width: 100px;
+  height: 100px;
+}
+
+.sticky-note--front {
+  z-index: 15;
+}
+
+.sticky-note--new {
+  top: -10px;
+  left: -46px;
+  transform: rotate(-6deg);
+}
+
+.sticky-note--top {
+  top: -200px;
+  left: -200px;
+  transform: rotate(-8deg);
+  opacity: 0;
+}
+
+.sticky-note--right {
+  top: 300px;
+  right: 8%;
+  transform: rotate(12deg);
+}
+
+.sticky-note--bottom {
+  bottom: 120px;
+  left: 36%;
+  transform: rotate(-4deg);
+}
+
+.sticky-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
+}
+
+.sticky-pin {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
   z-index: 1;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
+.sticky-text {
+  position: absolute;
+  top: 65%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: #2d4a3b;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+}
+
+.sticky-note--medium .sticky-text {
+  font-size: 9px;
+}
+
+.sticky-note--large .sticky-text {
+  font-size: 10px;
+}
+
+.evidence-caption {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.overlay-thread {
+  position: absolute;
+  background: #9b1f24;
+  box-shadow: 0 1px 4px rgba(54, 10, 12, 0.55);
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0.94;
+}
+
+/* Horizontal lines */
+.overlay-thread:not(.vertical-line) {
+  height: 3px;
+  border-radius: 1px;
+}
+
+/* Vertical lines */
+.overlay-thread.vertical-line {
+  width: 3px;
+  border-radius: 1px;
+}
+
+.overlay-thread::before,
+.overlay-thread::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #6e1418;
+  border-radius: 50%;
+  top: -3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.overlay-thread::before {
+  left: -4px;
+}
+
+.overlay-thread::after {
+  right: -4px;
+}
+
+/* Fix vertical thread pins: bottom pin at the bottom end */
+.overlay-thread.vertical-line::before {
+  left: -2.5px;
+}
+
+.overlay-thread.vertical-line::after {
+  top: auto;
+  bottom: -3px;
+  left: -2.5px;
+  right: auto;
+}
+
+/* Summary area -> NovaShell pin (diagonal) */
+.overlay-thread--shell-db {
+  top: 258px;
+  left: 6%;
+  width: 20%;
+  transform: rotate(-22deg);
+}
+
+/* Summary bottom -> row 1 center (straight vertical) */
+.overlay-thread--shell-mail {
+  top: 226px;
+  left: 39%;
+  height: 70px;
+}
+
+/* Row 1 connector (near bottom edge to avoid card text) */
+.overlay-thread--db-search {
+  top: 327px;
+  left: 39%;
+  width: 24%;
+  transform: rotate(2deg);
+}
+
+/* Collected clues card -> NovaWiki status badge (diagonal right edge) */
+.overlay-thread--mail-wiki {
+  top: 308px;
+  left: 87%;
+  width: 20%;
+  transform: rotate(74deg);
+}
+
+/* Row 2 center -> The Onion top edge (diagonal) */
+.overlay-thread--wiki-onion {
+  top: 395px;
+  left: 41%;
+  width: 19%;
+  transform: rotate(52deg);
+}
+
+/* The Onion right edge -> error prop (diagonal) */
+.overlay-thread--search-onion {
+  top: 486px;
+  left: 74%;
+  width: 31%;
+  transform: rotate(10deg);
+}
+
+/* Left board edge -> NovaSearch icon area (diagonal) */
+.overlay-thread--left-search {
+  top: 414px;
+  left: -9%;
+  width: 24%;
+  transform: rotate(26deg);
+}
+
+/* NovaMail -> NovaCrime DB across center gap (diagonal) */
+.overlay-thread--mail-db {
+  top: 397px;
+  left: 28%;
+  width: 44%;
+  transform: rotate(-17deg);
+}
+
+.hub-topbar.evidence-strip {
+  position: relative;
+  left: 0;
+}
+
+.overlay-pin--db {
+  top: 414px;
+  left: 62%;
+}
+
+.evidence-strip,
+.evidence-card,
+.evidence-mini-note,
+.room-panel {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(231, 219, 196, 0.96), rgba(204, 187, 157, 0.94));
+  border: 1px solid rgba(66, 46, 31, 0.35);
+  box-shadow: var(--paper-shadow);
 }
 
 .prop-pin-image {
@@ -561,13 +952,13 @@ const formattedTime = computed(() => {
 
 .sticky-note--right {
   top: 300px;
-  right: 15%;
+  right: 8%;
   transform: rotate(12deg);
 }
 
 .sticky-note--bottom {
   bottom: 120px;
-  left: 30%;
+  left: 36%;
   transform: rotate(-4deg);
 }
 
@@ -617,472 +1008,6 @@ const formattedTime = computed(() => {
   letter-spacing: 1px;
   color: var(--text-muted);
   text-align: center;
-}
-
-.overlay-thread {
-  position: absolute;
-  background: #c52227;
-  box-shadow: 0 1px 4px rgba(102, 17, 20, 0.4);
-  pointer-events: none;
-  z-index: 8;
-  opacity: 1;
-}
-
-/* Horizontal lines */
-.overlay-thread:not(.vertical-line) {
-  height: 3px;
-  border-radius: 1px;
-}
-
-/* Vertical lines */
-.overlay-thread.vertical-line {
-  width: 3px;
-  border-radius: 1px;
-}
-
-.overlay-thread::before,
-.overlay-thread::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #8b1a1e;
-  border-radius: 50%;
-  top: -3px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-}
-
-.overlay-thread::before {
-  left: -4px;
-}
-
-.overlay-thread::after {
-  right: -4px;
-}
-
-.overlay-thread--one {
-  top: 140px;
-  left: 5%;
-  width: 300px;
-  transform: rotate(25deg);
-}
-
-.overlay-thread--two {
-  top: 180px;
-  left: 45%;
-  width: 250px;
-  transform: rotate(-15deg);
-}
-
-.overlay-thread--three {
-  top: 320px;
-  left: 25%;
-  height: 180px;
-}
-
-.overlay-thread--four {
-  top: 380px;
-  left: 10%;
-  width: 320px;
-  transform: rotate(8deg);
-}
-
-.overlay-thread--five {
-  top: 460px;
-  left: 55%;
-  width: 280px;
-  transform: rotate(-20deg);
-}
-
-.overlay-thread--six {
-  top: 520px;
-  left: 15%;
-  width: 400px;
-  transform: rotate(12deg);
-}
-
-.overlay-thread--seven {
-  top: 280px;
-  left: 70%;
-  height: 220px;
-}
-
-.overlay-thread--eight {
-  top: 600px;
-  left: 30%;
-  width: 350px;
-  transform: rotate(-8deg);
-}
-
-.overlay-thread--nine {
-  top: 220px;
-  left: 35%;
-  width: 180px;
-  transform: rotate(45deg);
-}
-
-.hub-topbar.evidence-strip {
-  position: relative;
-  left: 0;
-}
-
-.overlay-pin--db {
-  top: 414px;
-  left: 62%;
-}
-
-.evidence-strip,
-.evidence-card,
-.evidence-mini-note,
-.room-panel {
-  position: relative;
-  z-index: 1;
-}
-
-.prop-pin-image {
-  position: absolute;
-  top: -12px;
-  left: 18px;
-  width: 20px;
-  height: 20px;
-  z-index: 2;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-.prop-pin-image--red-left {
-  left: 16px;
-}
-
-.prop-pin-image--pink {
-  top: -10px;
-  left: 20px;
-}
-
-.prop-pin-image--gold {
-  top: -14px;
-  left: 22px;
-}
-
-.missing-poster,
-.missing-normal {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.evidence-photo__frame {
-  background: linear-gradient(180deg, rgba(255, 249, 238, 0.98), rgba(236, 223, 203, 0.96));
-  border: 1px solid rgba(89, 65, 42, 0.2);
-  box-shadow: var(--paper-shadow);
-}
-
-.missing-poster {
-  width: auto;
-  max-width: 120px;
-  padding: 0;
-  border-radius: 4px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.missing-normal {
-  width: auto;
-  max-width: 140px;
-  padding: 0;
-  border-radius: 3px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.evidence-photo__frame {
-  width: 96px;
-  height: 142px;
-  border-radius: 4px;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.evidence-photo__frame--portrait {
-  width: 108px;
-  height: 152px;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.evidence-photo__frame--large {
-  width: 140px;
-  height: 180px;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
-.prop-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 2px;
-  border: 1px solid rgba(108, 81, 55, 0.2);
-  filter: saturate(0.86) contrast(1.03);
-}
-
-.prop-image--poster {
-  min-height: 120px;
-  object-fit: cover;
-}
-
-.prop-image--poster-full {
-  width: 100%;
-  height: auto;
-  min-height: unset;
-  object-fit: contain;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-.prop-image--normal {
-  min-height: 100px;
-  object-fit: cover;
-}
-
-.prop-image--photo {
-  width: 100%;
-  height: 100px;
-  object-fit: cover;
-}
-
-.prop-image--portrait {
-  width: 88px;
-  height: 106px;
-  object-fit: cover;
-  margin: 0 auto;
-}
-
-.prop-image--large {
-  width: 120px;
-  height: 140px;
-  object-fit: cover;
-  margin: 0 auto;
-}
-
-/* Sticky Notes */
-.sticky-note {
-  position: absolute;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.sticky-note--small {
-  width: 60px;
-  height: 60px;
-}
-
-.sticky-note--medium {
-  width: 80px;
-  height: 80px;
-}
-
-.sticky-note--large {
-  width: 100px;
-  height: 100px;
-}
-
-.sticky-note--front {
-  z-index: 15;
-}
-
-.sticky-note--top {
-  top: -200px;
-  left: -200px;
-  transform: rotate(-8deg);
-  opacity: 0;
-}
-
-.sticky-note--right {
-  top: 300px;
-  right: 15%;
-  transform: rotate(12deg);
-}
-
-.sticky-note--bottom {
-  bottom: 120px;
-  left: 30%;
-  transform: rotate(-4deg);
-}
-
-.sticky-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
-}
-
-.sticky-pin {
-  position: absolute;
-  top: 25%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 16px;
-  height: 16px;
-  z-index: 1;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
-}
-
-.sticky-text {
-  position: absolute;
-  top: 65%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-family: var(--font-mono);
-  font-size: 8px;
-  font-weight: 700;
-  color: #2d4a3b;
-  text-align: center;
-  line-height: 1.2;
-  letter-spacing: 0.5px;
-}
-
-.sticky-note--medium .sticky-text {
-  font-size: 9px;
-}
-
-.sticky-note--large .sticky-text {
-  font-size: 10px;
-}
-
-.evidence-caption {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.overlay-thread {
-  position: absolute;
-  background: #c52227;
-  box-shadow: 0 1px 4px rgba(102, 17, 20, 0.4);
-  pointer-events: none;
-  z-index: 8;
-  opacity: 1;
-}
-
-/* Horizontal lines */
-.overlay-thread:not(.vertical-line) {
-  height: 3px;
-  border-radius: 1px;
-}
-
-/* Vertical lines */
-.overlay-thread.vertical-line {
-  width: 3px;
-  border-radius: 1px;
-}
-
-.overlay-thread::before,
-.overlay-thread::after {
-  content: '';
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #8b1a1e;
-  border-radius: 50%;
-  top: -3px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.2);
-}
-
-.overlay-thread::before {
-  left: -4px;
-}
-
-.overlay-thread::after {
-  right: -4px;
-}
-
-.overlay-thread--one {
-  top: 140px;
-  left: 5%;
-  width: 300px;
-  transform: rotate(25deg);
-}
-
-.overlay-thread--two {
-  top: 180px;
-  left: 45%;
-  width: 250px;
-  transform: rotate(-15deg);
-}
-
-.overlay-thread--three {
-  top: 320px;
-  left: 25%;
-  height: 180px;
-}
-
-.overlay-thread--four {
-  top: 380px;
-  left: 10%;
-  width: 320px;
-  transform: rotate(8deg);
-}
-
-.overlay-thread--five {
-  top: 460px;
-  left: 55%;
-  width: 280px;
-  transform: rotate(-20deg);
-}
-
-.overlay-thread--six {
-  top: 520px;
-  left: 15%;
-  width: 400px;
-  transform: rotate(12deg);
-}
-
-.overlay-thread--seven {
-  top: 280px;
-  left: 70%;
-  height: 220px;
-}
-
-.overlay-thread--eight {
-  top: 600px;
-  left: 30%;
-  width: 350px;
-  transform: rotate(-8deg);
-}
-
-.overlay-thread--nine {
-  top: 220px;
-  left: 35%;
-  width: 180px;
-  transform: rotate(45deg);
-}
-
-.hub-topbar.evidence-strip {
-  position: relative;
-  left: 0;
-}
-
-.overlay-pin--db {
-  top: 414px;
-  left: 62%;
-}
-
-.evidence-strip,
-.evidence-card,
-.evidence-mini-note,
-.room-panel {
-  position: relative;
-  background: linear-gradient(180deg, rgba(255, 250, 241, 0.98), rgba(237, 224, 202, 0.96));
-  border: 1px solid rgba(89, 65, 42, 0.2);
-  box-shadow: var(--paper-shadow);
 }
 
 .evidence-strip {
@@ -1271,6 +1196,17 @@ const formattedTime = computed(() => {
   position: absolute;
   inset: 0;
   background: repeating-linear-gradient(180deg, transparent 0 23px, rgba(121, 92, 67, 0.08) 23px 24px);
+  pointer-events: none;
+}
+
+.evidence-card::before,
+.room-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(127, 22, 22, 0.08), transparent 35%),
+    radial-gradient(circle at 82% 86%, rgba(0, 0, 0, 0.12), transparent 42%);
   pointer-events: none;
 }
 
