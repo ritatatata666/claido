@@ -296,7 +296,7 @@ onMounted(() => {
   }
   timerInterval = setInterval(() => {
     if (store.gameStartTime) {
-      elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000)
+      elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
     }
   }, 1000)
 })

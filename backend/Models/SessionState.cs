@@ -35,6 +35,8 @@ public class SessionState
     public HashSet<string> InvestigatorFoundClues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public int VillainTokens { get; set; } = 3;
     public int GoodTokens { get; set; } = 2;
+    public Dictionary<string, int> WrongAttemptsByRoom { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public int PenaltySecondsTotal { get; set; }
 }
 
 public class ClaudeGeneratedSession

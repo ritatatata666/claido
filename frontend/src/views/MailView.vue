@@ -64,10 +64,11 @@
           <div class="email-actions">
             <button
               class="btn-evidence"
-              :class="{ submitted: evidenceResult === 'correct', wrong: evidenceResult === 'wrong' }"
+              :class="{ submitted: evidenceResult === 'correct', wrong: evidenceResult === 'wrong' || evidenceResult === 'locked' }"
               @click="submitEvidence(selectedEmail)"
             >
               <span v-if="evidenceResult === 'correct'">✓ Evidence logged</span>
+              <span v-else-if="evidenceResult === 'locked'">🔒 Room locked after too many wrong attempts</span>
               <span v-else-if="evidenceResult === 'wrong'">✗ Nothing suspicious</span>
               <span v-else>⚑ Submit as evidence</span>
             </button>
@@ -161,7 +162,11 @@ function toggleFlag(email) {
   email.isFlagged = !email.isFlagged
 }
 
-function submitEvidence(email) {
+async function submitEvidence(email) {
+  if (store.isRoomLocked('mail')) {
+    evidenceResult.value = 'locked'
+    return
+  }
   const vaultWord = resolveVaultWord2()
   if (vaultWord && email.body?.toLowerCase().includes(vaultWord.toLowerCase())) {
     evidenceResult.value = 'correct'
@@ -172,7 +177,8 @@ function submitEvidence(email) {
     )
     store.markRoomComplete('mail')
   } else {
-    evidenceResult.value = 'wrong'
+    const penalty = await store.registerWrongAttempt('mail')
+    evidenceResult.value = penalty.locked ? 'locked' : 'wrong'
   }
 }
 

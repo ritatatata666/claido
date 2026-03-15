@@ -67,6 +67,7 @@
                 ⚑ Submit as evidence
               </button>
               <span v-if="onionSubmitResult[listing.id] === 'correct'" class="submit-correct">✓ Evidence logged</span>
+              <span v-else-if="onionSubmitResult[listing.id] === 'locked'" class="submit-wrong">🔒 Room locked after too many wrong attempts.</span>
               <span v-else-if="onionSubmitResult[listing.id] === 'wrong'" class="submit-wrong">✗ Not enough linkage to culprit.</span>
             </div>
           </div>
@@ -147,8 +148,13 @@ function normalizeOnionContent(data, culpritDepartment) {
   return getDefaultContent(culpritDepartment)
 }
 
-function submitOnionEvidence(listing) {
+async function submitOnionEvidence(listing) {
   if (!listing) return
+  if (store.isRoomLocked('onion')) {
+    onionSubmitResult.value[listing.id] = 'locked'
+    return
+  }
+
   const dept = activeCulpritDepartment.value
   const haystack = `${listing.title || ''} ${listing.description || ''}`.toLowerCase()
   const matchesDept = !!dept && haystack.includes(dept)
@@ -164,6 +170,10 @@ function submitOnionEvidence(listing) {
     return
   }
   onionSubmitResult.value[listing.id] = 'wrong'
+  const penalty = await store.registerWrongAttempt('onion')
+  if (penalty.locked) {
+    onionSubmitResult.value[listing.id] = 'locked'
+  }
 }
 
 function getDefaultContent(culpritDepartment) {
