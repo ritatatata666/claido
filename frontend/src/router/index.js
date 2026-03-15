@@ -12,6 +12,7 @@ import WikiView from '../views/WikiView.vue'
 import SearchView from '../views/SearchView.vue'
 import OnionView from '../views/OnionView.vue'
 import VaultView from '../views/VaultView.vue'
+import ReportView from '../views/ReportView.vue'
 
 const routes = [
   { path: '/login', component: LoginView, meta: { guestOnly: true } },
@@ -19,6 +20,7 @@ const routes = [
   { path: '/', component: LandingView, meta: { requiresAuth: true } },
   { path: '/history', component: HistoryView, meta: { requiresAuth: true } },
   { path: '/hub', component: HubView, meta: { requiresAuth: true } },
+  { path: '/report', component: ReportView },
   { path: '/shell', component: ShellView, meta: { requiresAuth: true } },
   { path: '/database', component: DatabaseView, meta: { requiresAuth: true } },
   { path: '/mail', component: MailView, meta: { requiresAuth: true } },

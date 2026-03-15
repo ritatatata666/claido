@@ -13,6 +13,9 @@
             <div class="menu-item" @click="goHub">
               <span class="menu-icon">🏠</span> Return to Hub
             </div>
+            <div class="menu-item" @click="router.push('/report'); menuOpen = false">
+              <span class="menu-icon">📋</span> Case Report
+            </div>
             <div class="menu-divider"></div>
             <div class="menu-item" @click="goalsOpen = true; menuOpen = false">
               <span class="menu-icon">🎯</span> Mission Goals

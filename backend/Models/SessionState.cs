@@ -12,8 +12,10 @@ public class Employee
 public class SessionState
 {
     public Guid SessionId { get; set; } = Guid.NewGuid();
-    public Guid OwnerUserId { get; set; }
+    public string InvestigatorName { get; set; } = "Investigator";
     public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? CompletedAtUtc { get; set; }
+    public Guid OwnerUserId { get; set; }
     public bool HistoryRecorded { get; set; }
     public Employee Culprit { get; set; } = new();
     public List<Employee> Employees { get; set; } = new();
@@ -71,6 +73,12 @@ public class ValidateRequest
     public int? Points { get; set; }
     public int? WrongAnswers { get; set; }
     public int? TimePenaltySeconds { get; set; }
+    public Guid? MemberId { get; set; }
+}
+
+public class CreateSessionRequest
+{
+    public string DisplayName { get; set; } = "";
 }
 
 public class TeamMember
@@ -110,6 +118,13 @@ public class TeamClueRequest
     public string ClueId { get; set; } = "";
     public string Room { get; set; } = "";
     public string Snippet { get; set; } = "";
+}
+
+public class LeaderboardEntry
+{
+    public string DisplayName { get; set; } = "Investigator";
+    public int SolveSeconds { get; set; }
+    public DateTime CompletedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
 public class SessionBaseResponse

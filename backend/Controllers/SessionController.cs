@@ -14,17 +14,20 @@ public class SessionController : ControllerBase
 {
     private readonly SessionCreator _sessionCreator;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
+    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
 
     public SessionController(
         SessionCreator sessionCreator,
-        ConcurrentDictionary<Guid, SessionState> sessions)
+        ConcurrentDictionary<Guid, SessionState> sessions,
+        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
     {
         _sessionCreator = sessionCreator;
         _sessions = sessions;
+        _leaderboard = leaderboard;
     }
 
     [HttpPost("create")]
-    public async Task<IActionResult> CreateSession()
+    public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest? request)
     {
         if (!TryGetUserId(out var userId))
             return Unauthorized(new { error = "Not authenticated." });
@@ -32,16 +35,50 @@ public class SessionController : ControllerBase
         try
         {
             var session = await _sessionCreator.CreateSessionAsync();
+            session.InvestigatorName = string.IsNullOrWhiteSpace(request?.DisplayName)
+                ? "Investigator"
+                : request!.DisplayName.Trim();
             session.OwnerUserId = userId;
             session.StartedAtUtc = DateTime.UtcNow;
             _sessions[session.SessionId] = session;
 
-            return Ok(SessionResponder.Build(session));
+            return Ok(new
+            {
+                sessionId = session.SessionId,
+                investigatorName = session.InvestigatorName,
+                culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                
+                employees = session.Employees,
+                incidentTimestamp = session.IncidentTimestamp,
+                badgeDiscrepancy = session.BadgeDiscrepancy,
+                motive = session.Motive,
+                vaultCode = session.VaultCode,
+                vaultWord1 = session.VaultWord1,
+                vaultWord2 = session.VaultWord2,
+                vaultWord3 = session.VaultWord3,
+                vaultWord4 = session.VaultWord4
+            });
         }
         catch (Exception ex)
         {
             return StatusCode(500, new { error = ex.Message });
         }
+    }
+
+    [HttpGet("leaderboard")]
+    public IActionResult GetLeaderboard()
+    {
+        var entries = _leaderboard.Values
+            .OrderBy(entry => entry.SolveSeconds)
+            .ThenBy(entry => entry.CompletedAtUtc)
+            .Take(5)
+            .Select(entry => new
+            {
+                displayName = entry.DisplayName,
+                solveSeconds = entry.SolveSeconds,
+                completedAtUtc = entry.CompletedAtUtc,
+            });
+
+        return Ok(entries);
     }
 
     private bool TryGetUserId(out Guid userId)

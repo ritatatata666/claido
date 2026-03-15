@@ -59,6 +59,9 @@ function persistState(state) {
       joinCode: state.joinCode,
       playerId: state.playerId,
       lockedClueIds: state.lockedClueIds,
+      investigatorName: state.investigatorName,
+      leaderboard: state.leaderboard,
+      notes: state.notes,
     }))
   } catch {}
 }
@@ -84,6 +87,14 @@ function normalizeActionLog(entries = []) {
   }))
 }
 
+function normalizeLeaderboardEntries(entries = []) {
+  return entries.map(entry => ({
+    displayName: entry.displayName ?? entry.DisplayName ?? 'Investigator',
+    solveSeconds: Number(entry.solveSeconds ?? entry.SolveSeconds ?? 0),
+    completedAtUtc: entry.completedAtUtc ?? entry.CompletedAtUtc ?? null,
+  }))
+}
+
 function initializeNewSession(state, payload) {
   state.sessionId = payload.sessionId
   state.sessionState = payload
@@ -98,6 +109,7 @@ function initializeNewSession(state, payload) {
   state.lockedClueIds = []
   state.villainTokens = payload.villainTokens ?? DEFAULT_VILLAIN_TOKENS
   state.goodTokens = payload.goodTokens ?? DEFAULT_GOOD_TOKENS
+  state.notes = ''
 }
 
 function syncClueLockStatus(state) {
@@ -131,10 +143,20 @@ export const useGameStore = defineStore('game', {
     joinCode: _persisted.joinCode ?? '',
     playerId: _persisted.playerId ?? null,
     lockedClueIds: _persisted.lockedClueIds ?? [],
+    investigatorName: _persisted.investigatorName ?? 'Investigator',
+    leaderboard: normalizeLeaderboardEntries(_persisted.leaderboard ?? []),
+    notes: _persisted.notes ?? '',
   }),
 
   getters: {
     isRoomComplete: (state) => (room) => state.completedRooms.includes(room),
+    currentPlayerName: (state) => {
+      if (state.playerId) {
+        const me = state.teamMembers.find(member => member.memberId === state.playerId)
+        if (me?.displayName) return me.displayName
+      }
+      return state.investigatorName || 'Investigator'
+    },
     elapsedSeconds: (state) => {
       if (!state.gameStartTime) return 0
       return Math.floor((Date.now() - state.gameStartTime) / 1000)
@@ -165,8 +187,12 @@ export const useGameStore = defineStore('game', {
       persistState(this)
     },
 
-    async createSession() {
-      const res = await apiFetch('/api/session/create', { method: 'POST' })
+    async createSession(displayName = 'Investigator') {
+      const res = await apiFetch('/api/session/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName }),
+      })
       if (!res.ok) throw new Error('Failed to create session')
       const data = await res.json()
       initializeNewSession(this, data)
@@ -174,6 +200,7 @@ export const useGameStore = defineStore('game', {
       this.teamMode = data.teamMode ?? this.teamMode
       this.teamRole = 'good'
       this.playerId = null
+      this.investigatorName = data.investigatorName ?? displayName
       persistState(this)
       return data
     },
@@ -191,6 +218,7 @@ export const useGameStore = defineStore('game', {
       const payload = await res.json()
       initializeNewSession(this, payload)
       this.teamMode = 'team'
+      this.investigatorName = displayName
       this.applyTeamSnapshot(payload, payload.role, payload.playerId)
       return payload
     },
@@ -212,6 +240,7 @@ export const useGameStore = defineStore('game', {
       }
       const payload = await res.json()
       this.sessionId = payload.sessionId
+      this.investigatorName = displayName
       this.applyTeamSnapshot(payload, payload.role, payload.playerId)
       return payload
     },
@@ -223,6 +252,15 @@ export const useGameStore = defineStore('game', {
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
       return payload
+    },
+
+    async fetchLeaderboard() {
+      const res = await fetch(`${API}/api/session/leaderboard`)
+      if (!res.ok) throw new Error('Failed to load leaderboard.')
+      const payload = await res.json()
+      this.leaderboard = normalizeLeaderboardEntries(payload)
+      persistState(this)
+      return this.leaderboard
     },
 
     addClue(id, room, text) {
@@ -369,9 +407,17 @@ export const useGameStore = defineStore('game', {
       const res = await apiFetch(`/api/session/${this.sessionId}/room/${roomName}/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer, ...extras }),
+        body: JSON.stringify({
+          answer, ...extras,
+          memberId: this.playerId,
+        }),
       })
-      return res.json()
+      const payload = await res.json()
+      if (Array.isArray(payload.leaderboard)) {
+        this.leaderboard = normalizeLeaderboardEntries(payload.leaderboard)
+        persistState(this)
+      }
+      return payload
     },
   },
 })

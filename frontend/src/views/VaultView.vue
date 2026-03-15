@@ -1,10 +1,9 @@
 <template>
   <RoomLayout>
-    <div class="vault-view">
+    <div :class="['vault-view', { 'vault-view--solved': solved }]">
       <!-- Solved screen -->
       <div v-if="solved" class="solved-screen">
-        <div class="declassified-stamp">DECLASSIFIED</div>
-        <div class="case-file card">
+        <div class="case-file">
           <div class="case-header">
             <span class="case-label">CASE FILE — PROJECT NOVA INCIDENT</span>
             <span class="case-date">2025-03-03</span>
@@ -36,7 +35,27 @@
             </div>
           </div>
           <div class="case-footer">
-            <span>Case solved by investigator in {{ formattedTime }}</span>
+            <span>Case solved by {{ store.currentPlayerName }} in {{ formattedTime }}</span>
+          </div>
+        </div>
+        <div class="leaderboard-panel">
+          <div class="leaderboard-panel__header">
+            <span class="leaderboard-panel__eyebrow">Fastest Times</span>
+            <h2 class="leaderboard-panel__title">Top 5 Leaderboard</h2>
+          </div>
+          <div v-if="store.leaderboard.length === 0" class="leaderboard-panel__empty">
+            No leaderboard entries recorded yet.
+          </div>
+          <div v-else class="leaderboard-panel__list">
+            <div
+              v-for="(entry, index) in store.leaderboard"
+              :key="`${entry.displayName}-${entry.solveSeconds}-${index}`"
+              :class="['leaderboard-panel__row', { 'leaderboard-panel__row--current': isCurrentEntry(entry, index) }]"
+            >
+              <span class="leaderboard-panel__rank">#{{ index + 1 }}</span>
+              <span class="leaderboard-panel__name">{{ entry.displayName }}</span>
+              <span class="leaderboard-panel__time">{{ formatClock(entry.solveSeconds) }}</span>
+            </div>
           </div>
         </div>
         <button class="btn-primary play-again" @click="$router.push('/')">
@@ -115,11 +134,40 @@ const solveTime = ref(0)
 const wrongAttempts = ref(0)
 
 const formattedTime = computed(() => {
-  const s = solveTime.value
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  return `${m}m ${sec}s`
+  return formatClock(solveTime.value, true)
 })
+
+const currentRank = computed(() => {
+  const myName = store.currentPlayerName
+  const mySeconds = solveTime.value
+  if (!myName || !mySeconds) return -1
+  return store.leaderboard.findIndex(entry =>
+    entry.displayName === myName && Number(entry.solveSeconds) === Number(mySeconds)
+  )
+})
+
+function formatClock(totalSeconds, verbose = false) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+
+  if (verbose) {
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+    return `${minutes}m ${seconds}s`
+  }
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+function isCurrentEntry(entry, index) {
+  return currentRank.value === index
+    && entry.displayName === store.currentPlayerName
+    && Number(entry.solveSeconds) === Number(solveTime.value)
+}
 
 async function submit() {
   const answer = passphrase.value.trim()
@@ -167,6 +215,22 @@ async function submit() {
   font-family: 'Courier New', Courier, monospace;
 }
 
+.vault-view--solved {
+  background:
+    radial-gradient(circle at top left, rgba(255, 245, 228, 0.55), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(214, 188, 150, 0.32), transparent 26%),
+    linear-gradient(180deg, #e2cba8 0%, #d5bb95 52%, #caa980 100%);
+}
+
+/* Vault does not need the RoomLayout evidence sidebar */
+:deep(.clue-sidebar) {
+  display: none;
+}
+
+:deep(.room-main) {
+  width: 100%;
+}
+
 .vault-view::before {
   content: '';
   position: absolute;
@@ -180,6 +244,22 @@ async function submit() {
   );
   pointer-events: none;
   z-index: 999;
+}
+
+.vault-view--solved::before {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 27px,
+      rgba(160, 130, 95, 0.08) 27px 28px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.05) 0px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 12px
+    );
 }
 
 /* Vault entry */
@@ -357,37 +437,26 @@ async function submit() {
 /* Solved screen */
 .solved-screen {
   width: 100%;
-  max-width: 640px;
+  max-width: 1120px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 24px;
-}
-
-.declassified-stamp {
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: 12px;
-  color: var(--accent-red);
-  border: 4px solid var(--accent-red);
-  padding: 8px 24px;
-  transform: rotate(-6deg);
-  opacity: 0.9;
+  padding: 4px 10px 24px;
 }
 
 .case-file {
   width: 100%;
+  margin-top: 2px;
   padding: 0;
-  overflow: hidden;
 }
 
 .case-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: var(--bg-secondary);
-  border-bottom: 2px solid var(--accent-red);
+  padding: 0 0 14px;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .case-label {
@@ -395,17 +464,17 @@ async function submit() {
   font-weight: 700;
   font-family: var(--font-mono);
   letter-spacing: 1px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .case-date {
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .case-section {
-  padding: 24px;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -453,21 +522,109 @@ async function submit() {
 .vault-code {
   font-family: var(--font-mono);
   letter-spacing: 2px;
-  color: var(--accent-green);
+  color: var(--accent-orange);
 }
 
 .case-footer {
-  padding: 14px 24px;
-  background: var(--bg-secondary);
+  padding-top: 14px;
   border-top: 1px solid var(--border-color);
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent-red);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.leaderboard-panel {
+  width: 100%;
+  padding: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 14px;
+}
+
+.leaderboard-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-panel__eyebrow {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-red);
+}
+
+.leaderboard-panel__title {
+  margin: 0;
+  font-size: 22px;
+  color: var(--text-secondary);
+}
+
+.leaderboard-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-panel__row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.leaderboard-panel__row--current {
+  border-bottom-color: rgba(185, 70, 54, 0.55);
+}
+
+.leaderboard-panel__rank,
+.leaderboard-panel__name,
+.leaderboard-panel__time,
+.leaderboard-panel__empty {
   font-family: var(--font-mono);
 }
 
-.play-again {
-  padding: 12px 32px;
+.leaderboard-panel__rank {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.leaderboard-panel__name {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.leaderboard-panel__time {
   font-size: 15px;
   font-weight: 700;
+  color: var(--accent-orange);
+}
+
+.leaderboard-panel__empty {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.play-again {
+  align-self: center;
+  width: auto;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+@media (max-width: 720px) {
+  .leaderboard-panel__row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
