@@ -533,7 +533,7 @@ function getDefaultFilesystem(vaultWord1, culpritId = 1001) {
     username: 'analyst',
     files: {
       '/home/analyst/.env': `VAULT_WORD=${encodedWord}\nDB_PASS=hunter2\nAPI_KEY=sk-sdcsf-dsfsdfs-fsdfs`,
-      '/home/analyst/logs/access.log': `[01:17:22] WARNING Employee ${culpritId} accessed Server Room B after hours\n[08:30:01] INFO  Normal access main entrance\n[09:15:44] INFO  Engineering floor scan`,
+      '/home/analyst/logs/access.log': `[01:17:22] WARNING Employee ${culpritId} accessed Server Room B (AFTER_HOURS)\n[08:30:01] INFO  Normal access main entrance\n[09:15:44] INFO  Engineering floor scan`,
       '/home/analyst/readme.txt': 'Welcome to NovaCorp analyst workstation.\nCase file: PROJECT_NOVA_INCIDENT_2025.',
       '/etc/passwd': 'root:x:0:0:root:/root:/bin/bash\nanalyst:x:1000:1000::/home/analyst:/bin/bash',
     },
