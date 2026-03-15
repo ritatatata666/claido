@@ -5,6 +5,7 @@
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
         <span class="case-file">CASE FILE #NC-2025-0303</span>
+        <button v-if="store.sessionId" class="top-report-btn" @click="router.push('/report')">📋 Case Report</button>
       </div>
 
       <!-- Stamp heading -->
@@ -84,6 +85,7 @@
         <!-- Solo mode -->
         <template v-if="selectedMode === 'standard'">
           <p class="mode-card__desc">Investigate alone. All seven rooms are yours to explore.</p>
+          <input v-model="soloName" class="npc-input" placeholder="Investigator name" />
           <button
             class="start-btn"
             :disabled="loading"
@@ -107,6 +109,7 @@
                 <span class="team-lobby-card__eyebrow">Host a Room</span>
                 <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
                 <div class="team-lobby-card__actions">
+                  <input v-model="hostName" class="npc-input" placeholder="Host display name" />
                   <button class="team-lobby-card__button" :disabled="loading" @click="createTeamRoom">
                     <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
                     <span v-else>Create Team Room</span>
@@ -134,6 +137,28 @@
         </template>
       </div>
 
+      <section class="leaderboard-card">
+        <div class="leaderboard-card__header">
+          <span class="leaderboard-card__eyebrow">Fastest Investigators</span>
+          <h3 class="leaderboard-card__title">Top 5 Leaderboard</h3>
+        </div>
+        <div v-if="leaderboardError" class="leaderboard-card__error">{{ leaderboardError }}</div>
+        <div v-else-if="store.leaderboard.length === 0" class="leaderboard-card__empty">
+          No completed cases yet. First solved run sets the pace.
+        </div>
+        <div v-else class="leaderboard-list">
+          <div
+            v-for="(entry, index) in store.leaderboard"
+            :key="`${entry.displayName}-${entry.solveSeconds}-${index}`"
+            class="leaderboard-row"
+          >
+            <span class="leaderboard-rank">#{{ index + 1 }}</span>
+            <span class="leaderboard-name">{{ entry.displayName }}</span>
+            <span class="leaderboard-time">{{ formatDuration(entry.solveSeconds) }}</span>
+          </div>
+        </div>
+      </section>
+
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
       <img :src="cautionTapeImg" alt="" class="landing-caution-tape" aria-hidden="true" />
     </div>
@@ -141,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 import cautionTapeImg from '../../images/caution.webp'
@@ -150,11 +175,14 @@ const router = useRouter()
 const store = useGameStore()
 const loading = ref(false)
 const error = ref('')
+const soloName = ref(store.investigatorName || 'Investigator')
+const hostName = ref(store.investigatorName || 'Host Investigator')
 const joinCodeInput = ref('')
 const joinName = ref('')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
+const leaderboardError = ref('')
 const briefingOpen = ref(false)
 
 const rooms = [
@@ -172,7 +200,7 @@ async function startSoloSession() {
   error.value = ''
   try {
     store.configureTeamMode('standard')
-    await store.createSession()
+    await store.createSession(soloName.value.trim() || 'Investigator')
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
@@ -205,7 +233,7 @@ async function createTeamRoom() {
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.createTeamRoom('Host Investigator')
+    await store.createTeamRoom(hostName.value.trim() || 'Host Investigator')
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to create a team room. Is the backend running?'
@@ -213,6 +241,27 @@ async function createTeamRoom() {
     loading.value = false
   }
 }
+
+function formatDuration(totalSeconds) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const minutes = Math.floor(safe / 60)
+  const seconds = safe % 60
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60)
+    const remMinutes = minutes % 60
+    return `${hours}:${String(remMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
+onMounted(async () => {
+  leaderboardError.value = ''
+  try {
+    await store.fetchLeaderboard()
+  } catch (e) {
+    leaderboardError.value = e.message || 'Could not load leaderboard.'
+  }
+})
 </script>
 
 <style scoped>
@@ -339,6 +388,25 @@ async function createTeamRoom() {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.top-report-btn {
+  padding: 5px 12px;
+  background: rgba(200, 169, 122, 0.2);
+  border: 1px solid rgba(139, 100, 60, 0.45);
+  border-radius: 4px;
+  color: rgba(255, 220, 180, 0.85);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.top-report-btn:hover {
+  background: rgba(200, 169, 122, 0.35);
+  border-color: rgba(139, 100, 60, 0.7);
 }
 
 .case-file {
@@ -834,6 +902,186 @@ async function createTeamRoom() {
     0 12px 30px rgba(18, 10, 6, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.leaderboard-card {
+  width: 100%;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d8bea0, #ccb084);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  padding: 24px 28px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.leaderboard-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.leaderboard-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #8b3a2a;
+}
+
+.leaderboard-card__title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #5a3d24;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 100, 60, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.45);
+}
+
+.leaderboard-rank,
+.leaderboard-time,
+.leaderboard-name {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b3a2a;
+}
+
+.leaderboard-name {
+  font-size: 14px;
+  color: #5a3d24;
+}
+
+.leaderboard-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7a2f26;
+}
+
+.leaderboard-card__empty,
+.leaderboard-card__error {
+  font-size: 13px;
+  color: #7a5c3a;
+}
+
+.leaderboard-card__error {
+  color: #8f2018;
+}
+
+.leaderboard-card {
+  width: 100%;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d8bea0, #ccb084);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  padding: 24px 28px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.leaderboard-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.leaderboard-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #8b3a2a;
+}
+
+.leaderboard-card__title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #5a3d24;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 100, 60, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.45);
+}
+
+.leaderboard-rank,
+.leaderboard-time,
+.leaderboard-name {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b3a2a;
+}
+
+.leaderboard-name {
+  font-size: 14px;
+  color: #5a3d24;
+}
+
+.leaderboard-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7a2f26;
+}
+
+.leaderboard-card__empty,
+.leaderboard-card__error {
+  font-size: 13px;
+  color: #7a5c3a;
+}
+
+.leaderboard-card__error {
+  color: #8f2018;
 }
 
 .mode-card__title {

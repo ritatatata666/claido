@@ -40,64 +40,64 @@
         <div class="sticky-text">VAULT<br/>4 WORDS</div>
       </div>
 
-      <!-- New Sticky Note -->
-      <div class="sticky-note sticky-note--small sticky-note--new sticky-note--front">
-        <img :src="goldPinImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">FOLLOW<br/>LEADS</div>
-      </div>
-
-      <!-- Missing Person Poster - top left -->
-      <aside class="corner-prop corner-prop--left-top missing-poster">
-        <img :src="redPinImg" alt="" class="prop-pin-image prop-pin-image--red" />
-        <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
-      </aside>
-
-      <!-- Skull Evidence - left bottom -->
-      <aside class="corner-prop corner-prop--left-bottom evidence-photo">
-        <img :src="bluePinImg" alt="" class="prop-pin-image prop-pin-image--blue" />
-        <div class="evidence-photo__frame">
-          <img :src="skullEvidenceImg" alt="" class="prop-image prop-image--photo" />
-          <div class="evidence-caption">SCENE 03 · UNRESOLVED</div>
+        <!-- New Sticky Note -->
+        <div class="sticky-note sticky-note--small sticky-note--new sticky-note--front">
+          <img :src="goldPinImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">FOLLOW<br/>LEADS</div>
         </div>
-      </aside>
 
-      <!-- Unknown Portrait - right top -->
-      <aside class="corner-prop corner-prop--right-top evidence-photo evidence-photo--portrait">
-        <img :src="pinkPinImg" alt="" class="prop-pin-image prop-pin-image--pink" />
-        <div class="evidence-photo__frame evidence-photo__frame--portrait">
-          <img :src="unknownPortraitImg" alt="" class="prop-image prop-image--portrait" />
-          <div class="evidence-caption">PERSON OF INTEREST</div>
+        <!-- Missing Person Poster - top left -->
+        <aside class="corner-prop corner-prop--left-top missing-poster">
+          <img :src="redPinImg" alt="" class="prop-pin-image prop-pin-image--red" />
+          <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
+        </aside>
+
+        <!-- Skull Evidence - left bottom -->
+        <aside class="corner-prop corner-prop--left-bottom evidence-photo">
+          <img :src="bluePinImg" alt="" class="prop-pin-image prop-pin-image--blue" />
+          <div class="evidence-photo__frame">
+            <img :src="skullEvidenceImg" alt="" class="prop-image prop-image--photo" />
+            <div class="evidence-caption">SCENE 03 · UNRESOLVED</div>
+          </div>
+        </aside>
+
+        <!-- Unknown Portrait - right top -->
+        <aside class="corner-prop corner-prop--right-top evidence-photo evidence-photo--portrait">
+          <img :src="pinkPinImg" alt="" class="prop-pin-image prop-pin-image--pink" />
+          <div class="evidence-photo__frame evidence-photo__frame--portrait">
+            <img :src="unknownPortraitImg" alt="" class="prop-image prop-image--portrait" />
+            <div class="evidence-caption">PERSON OF INTEREST</div>
+          </div>
+        </aside>
+
+        <!-- Error Image - right bottom, bigger -->
+        <aside class="corner-prop corner-prop--right-bottom error-evidence">
+          <img :src="goldPinImg" alt="" class="prop-pin-image prop-pin-image--gold" />
+          <div class="evidence-photo__frame evidence-photo__frame--large">
+            <img :src="errorPosterImg" alt="" class="prop-image prop-image--large" />
+            <div class="evidence-caption">ERROR LOG EXTRACT</div>
+          </div>
+        </aside>
+
+        <!-- Missing Image as normal photo - center left -->
+        <aside class="corner-prop corner-prop--center-left missing-normal">
+          <img :src="redPinLeftImg" alt="" class="prop-pin-image prop-pin-image--red-left" />
+          <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
+        </aside>
+
+        <!-- Sticky Notes -->
+        <div class="sticky-note sticky-note--small sticky-note--top">
+          <img :src="bluePinLeftImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">CHECK<br/>LOGS</div>
         </div>
-      </aside>
 
-      <!-- Error Image - right bottom, bigger -->
-      <aside class="corner-prop corner-prop--right-bottom error-evidence">
-        <img :src="goldPinImg" alt="" class="prop-pin-image prop-pin-image--gold" />
-        <div class="evidence-photo__frame evidence-photo__frame--large">
-          <img :src="errorPosterImg" alt="" class="prop-image prop-image--large" />
-          <div class="evidence-caption">ERROR LOG EXTRACT</div>
+        <div class="sticky-note sticky-note--large sticky-note--bottom sticky-note--front">
+          <img :src="pinkPinImg" alt="" class="sticky-pin" />
+          <img :src="stickyNoteImg" alt="" class="sticky-image" />
+          <div class="sticky-text">INVESTIGATE<br/>ALL ROOMS<br/>FOR CLUES</div>
         </div>
-      </aside>
-
-      <!-- Missing Image as normal photo - center left -->
-      <aside class="corner-prop corner-prop--center-left missing-normal">
-        <img :src="redPinLeftImg" alt="" class="prop-pin-image prop-pin-image--red-left" />
-        <img :src="missingPosterImg" alt="" class="prop-image prop-image--poster-full" />
-      </aside>
-
-      <!-- Sticky Notes -->
-      <div class="sticky-note sticky-note--small sticky-note--top">
-        <img :src="bluePinLeftImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">CHECK<br/>LOGS</div>
-      </div>
-      
-      <div class="sticky-note sticky-note--large sticky-note--bottom sticky-note--front">
-        <img :src="pinkPinImg" alt="" class="sticky-pin" />
-        <img :src="stickyNoteImg" alt="" class="sticky-image" />
-        <div class="sticky-text">INVESTIGATE<br/>ALL ROOMS<br/>FOR CLUES</div>
-      </div>
 
       <div class="board-overlay" aria-hidden="true">
         <span class="overlay-thread overlay-thread--shell-db"></span>
@@ -109,7 +109,7 @@
         <span class="overlay-thread overlay-thread--mail-db"></span>
       </div>
 
-      <main class="hub-main">
+        <main class="hub-main">
         <section class="summary-row">
           <article class="summary-note evidence-card">
             <p class="section-label">Board Summary</p>
@@ -194,6 +194,7 @@ import TeamModePanel from '../components/TeamModePanel.vue'
 
 const router = useRouter()
 const store = useGameStore()
+const menuOpen = ref(false)
 
 const mainRooms = [
   {
@@ -1022,6 +1023,60 @@ const formattedTime = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.logo-arrow {
+  font-size: 9px;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+.hub-logo-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 160px;
+  background: linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(80, 50, 20, 0.35);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.hub-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5a3d24;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.hub-menu-item:hover {
+  background: rgba(139, 100, 60, 0.2);
+}
+
+.hub-menu-icon {
+  font-size: 14px;
+}
+
+.hub-dropdown-enter-active,
+.hub-dropdown-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
+}
+.hub-dropdown-enter-from,
+.hub-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 .logo-copy {
