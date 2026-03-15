@@ -15,15 +15,18 @@ public class RoomController : ControllerBase
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
     private readonly UserStore _users;
+    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
 
     public RoomController(
         AiService claude,
         ConcurrentDictionary<Guid, SessionState> sessions,
-        UserStore users)
+        UserStore users,
+        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
     {
         _claude = claude;
         _sessions = sessions;
         _users = users;
+        _leaderboard = leaderboard;
     }
 
     [HttpPost("enter")]
@@ -109,14 +112,14 @@ public class RoomController : ControllerBase
             });
             session.HistoryRecorded = true;
         }
-        IEnumerable<object>? leaderboard = null;
+        object? leaderboard = null;
 
         if (correct && roomName == "vault")
         {
-            leaderboard = RecordSolve(session);
+            leaderboard = RecordSolve(session, req.MemberId);
         }
 
-        return Ok(new { correct, hint, leaderboard });
+        return Ok(new { correct, hint });
     }
 
     private static bool ValidateVaultAnswer(string answer, SessionState session)
@@ -177,17 +180,38 @@ public class RoomController : ControllerBase
         };
     }
 
-    private IEnumerable<object> RecordSolve(SessionState session)
+    private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
     {
         lock (session)
         {
             if (!session.CompletedAtUtc.HasValue)
             {
-                session.CompletedAtUtc = DateTime.UtcNow;
+                var completedAt = DateTime.UtcNow;
+                session.CompletedAtUtc = completedAt;
+
+                var displayName = ResolveDisplayName(session, memberId);
+                var solveSeconds = Math.Max(1, (int)Math.Round((completedAt - session.StartedAtUtc).TotalSeconds));
+
+                _leaderboard.AddOrUpdate(
+                    displayName,
+                    _ => new LeaderboardEntry
+                    {
+                        DisplayName = displayName,
+                        SolveSeconds = solveSeconds,
+                        CompletedAtUtc = completedAt,
+                    },
+                    (_, existing) => existing.SolveSeconds <= solveSeconds
+                        ? existing
+                        : new LeaderboardEntry
+                        {
+                            DisplayName = displayName,
+                            SolveSeconds = solveSeconds,
+                            CompletedAtUtc = completedAt,
+                        });
             }
         }
 
-        return _users.GetLeaderboard(5)
+        return _leaderboard.Values
             .OrderBy(entry => entry.SolveSeconds)
             .ThenBy(entry => entry.CompletedAtUtc)
             .Take(5)
@@ -199,4 +223,18 @@ public class RoomController : ControllerBase
             });
     }
 
+    private static string ResolveDisplayName(SessionState session, Guid? memberId)
+    {
+        if (memberId.HasValue)
+        {
+            var member = session.TeamMembers.FirstOrDefault(item => item.MemberId == memberId.Value);
+            if (member != null && !string.IsNullOrWhiteSpace(member.DisplayName))
+                return member.DisplayName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
+            return session.InvestigatorName.Trim();
+
+        return "Player";
+    }
 }

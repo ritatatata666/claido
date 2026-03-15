@@ -14,16 +14,16 @@ public class SessionController : ControllerBase
 {
     private readonly SessionCreator _sessionCreator;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
-    private readonly UserStore _users;
+    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
 
     public SessionController(
         SessionCreator sessionCreator,
         ConcurrentDictionary<Guid, SessionState> sessions,
-        UserStore users)
+        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
     {
         _sessionCreator = sessionCreator;
         _sessions = sessions;
-        _users = users;
+        _leaderboard = leaderboard;
     }
 
     [HttpPost("create")]
@@ -66,10 +66,12 @@ public class SessionController : ControllerBase
     }
 
     [HttpGet("leaderboard")]
-    [AllowAnonymous]
     public IActionResult GetLeaderboard()
     {
-        var entries = _users.GetLeaderboard(5)
+        var entries = _leaderboard.Values
+            .OrderBy(entry => entry.SolveSeconds)
+            .ThenBy(entry => entry.CompletedAtUtc)
+            .Take(5)
             .Select(entry => new
             {
                 displayName = entry.DisplayName,

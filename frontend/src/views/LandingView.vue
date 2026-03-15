@@ -1199,91 +1199,9 @@ async function logout() {
   color: #8f2018;
 }
 
-.leaderboard-card__title {
+.mode-card__title {
   margin: 0;
-  font-size: 20px;
-  letter-spacing: 1px;
-  color: #5a3d24;
-}
-
-.leaderboard-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.leaderboard-row {
-  display: grid;
-  grid-template-columns: 52px 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 14px;
-  border: 1px solid rgba(139, 100, 60, 0.18);
-  border-radius: 6px;
-  background: rgba(255, 248, 236, 0.45);
-}
-
-.leaderboard-rank,
-.leaderboard-time,
-.leaderboard-name {
-  font-family: var(--font-mono);
-}
-
-.leaderboard-rank {
-  font-size: 12px;
-  font-weight: 700;
-  color: #8b3a2a;
-}
-
-.leaderboard-name {
   font-size: 14px;
-  color: #5a3d24;
-}
-
-.leaderboard-time {
-  font-size: 14px;
-  font-weight: 700;
-  color: #7a2f26;
-}
-
-.leaderboard-card__empty,
-.leaderboard-card__error {
-  font-size: 13px;
-  color: #7a5c3a;
-}
-
-.leaderboard-card__error {
-  color: #8f2018;
-}
-
-.leaderboard-card {
-  width: 100%;
-  position: relative;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
-    ),
-    linear-gradient(180deg, #d8bea0, #ccb084);
-  border: 1px solid #a88b62;
-  border-radius: 6px;
-  padding: 24px 28px;
-  box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-}
-
-.leaderboard-card__header {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.leaderboard-card__eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #4b3523;

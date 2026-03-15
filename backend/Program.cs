@@ -15,6 +15,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddHttpClient<AiService>();
 builder.Services.AddSingleton<ConcurrentDictionary<Guid, SessionState>>();
 builder.Services.AddSingleton<ConcurrentDictionary<string, Guid>>();
+builder.Services.AddSingleton(new ConcurrentDictionary<string, LeaderboardEntry>(StringComparer.OrdinalIgnoreCase));
 builder.Services.AddSingleton<SessionCreator>();
 builder.Services.AddSingleton<UserStore>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

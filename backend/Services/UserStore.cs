@@ -117,35 +117,6 @@ public class UserStore
         }
     }
 
-    public List<LeaderboardEntry> GetLeaderboard(int take = 5)
-    {
-        var safeTake = Math.Max(1, take);
-
-        lock (_syncRoot)
-        {
-            var file = LoadFileUnsafe();
-
-            return file.Users
-                .SelectMany(user => user.History.Select(history => new
-                {
-                    user.Username,
-                    history.ElapsedSeconds,
-                    history.CompletedAtUtc
-                }))
-                .Where(item => item.ElapsedSeconds > 0)
-                .OrderBy(item => item.ElapsedSeconds)
-                .ThenBy(item => item.CompletedAtUtc)
-                .Take(safeTake)
-                .Select(item => new LeaderboardEntry
-                {
-                    DisplayName = item.Username,
-                    SolveSeconds = item.ElapsedSeconds,
-                    CompletedAtUtc = item.CompletedAtUtc
-                })
-                .ToList();
-        }
-    }
-
     public void AddHistory(Guid userId, GameHistoryEntry entry)
     {
         lock (_syncRoot)

@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -20,12 +19,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest? request)
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (request == null)
-            return BadRequest(new { error = "Invalid request payload." });
-
         var (success, error) = _users.Register(request.Username, request.Password);
         if (!success) return BadRequest(new { error });
 
@@ -42,12 +37,8 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginRequest? request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (request == null)
-            return BadRequest(new { error = "Invalid request payload." });
-
         var user = _users.Authenticate(request.Username, request.Password);
         if (user == null) return Unauthorized(new { error = "Invalid username or password." });
 
