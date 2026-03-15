@@ -1,11 +1,16 @@
 <template>
   <div class="landing">
+    <button class="window-corner-btn" @click="router.push('/history')">Recent Cases</button>
     <div class="landing-board">
 
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
-        <span class="case-file">CASE FILE #NC-2025-0303</span>
+        <div class="top-right">
+          <span class="case-file">CASE FILE #NC-2025-0303</span>
         <button v-if="store.sessionId" class="top-report-btn" @click="router.push('/report')">📋 Case Report</button>
+          <span>Signed in as <strong>{{ auth.user?.username }}</strong></span>
+          <button class="top-right__logout" @click="logout">Logout</button>
+        </div>
       </div>
 
       <!-- Stamp heading -->
@@ -88,7 +93,7 @@
           <input v-model="soloName" class="npc-input" placeholder="Investigator name" />
           <button
             class="start-btn"
-            :disabled="loading"
+            :disabled="loading || !soloName.trim()"
             @click="startSoloSession"
           >
             <span v-if="loading">
@@ -109,8 +114,12 @@
                 <span class="team-lobby-card__eyebrow">Host a Room</span>
                 <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
                 <div class="team-lobby-card__actions">
-                  <input v-model="hostName" class="npc-input" placeholder="Host display name" />
-                  <button class="team-lobby-card__button" :disabled="loading" @click="createTeamRoom">
+                  <input v-model="hostName" class="npc-input" placeholder="Investigator name" />
+                  <select v-model="hostRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="loading || !hostName.trim()" @click="createTeamRoom">
                     <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
                     <span v-else>Create Team Room</span>
                   </button>
@@ -124,8 +133,12 @@
                 <p class="mode-card__team-text">Enter the 6-character code from your host to join their session.</p>
                 <div class="team-lobby-card__actions">
                   <input v-model="joinCodeInput" class="npc-input" placeholder="Join code (e.g. ABC123)" maxlength="6" style="text-transform:uppercase" />
-                  <input v-model="joinName" class="npc-input" placeholder="Your display name" />
-                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim()" @click="joinExistingSession">
+                  <input v-model="joinName" class="npc-input" placeholder="Investigator name" />
+                  <select v-model="joinRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim() || !joinName.trim()" @click="joinExistingSession">
                     <span v-if="joinLoading"><span class="spinner-dot"></span> Joining...</span>
                     <span v-else>Join Session</span>
                   </button>
@@ -161,6 +174,7 @@
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
       <img :src="cautionTapeImg" alt="" class="landing-caution-tape" aria-hidden="true" />
+
     </div>
   </div>
 </template>
@@ -170,15 +184,19 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 import cautionTapeImg from '../../images/caution.webp'
+import { useAuthStore } from '../stores/authStore.js'
 
 const router = useRouter()
 const store = useGameStore()
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
-const soloName = ref(store.investigatorName || 'Investigator')
-const hostName = ref(store.investigatorName || 'Host Investigator')
+const soloName = ref('')
+const hostName = ref('')
+const hostRole = ref('investigator')
 const joinCodeInput = ref('')
 const joinName = ref('')
+const joinRole = ref('investigator')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
@@ -196,11 +214,16 @@ const rooms = [
 ]
 
 async function startSoloSession() {
+  const name = soloName.value.trim()
+  if (!name) {
+    error.value = 'Enter investigator name.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
     store.configureTeamMode('standard')
-    await store.createSession(soloName.value.trim() || 'Investigator')
+    await store.createSession(name)
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
@@ -214,11 +237,20 @@ async function joinExistingSession() {
     joinError.value = 'Enter a join code first.'
     return
   }
+  const name = joinName.value.trim()
+  if (!name) {
+    joinError.value = 'Enter investigator name.'
+    return
+  }
   joinLoading.value = true
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.joinTeamSession(joinCodeInput.value.trim(), joinName.value.trim() || 'Investigator')
+    await store.joinTeamSession(
+      joinCodeInput.value.trim(),
+      name,
+      joinRole.value
+    )
     router.push('/hub')
   } catch (e) {
     joinError.value = e.message || 'Could not join that session.'
@@ -228,12 +260,20 @@ async function joinExistingSession() {
 }
 
 async function createTeamRoom() {
+  const name = hostName.value.trim()
+  if (!name) {
+    error.value = 'Enter investigator name.'
+    return
+  }
   loading.value = true
   error.value = ''
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.createTeamRoom(hostName.value.trim() || 'Host Investigator')
+    await store.createTeamRoom(
+      name,
+      hostRole.value
+    )
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to create a team room. Is the backend running?'
@@ -262,6 +302,12 @@ onMounted(async () => {
     leaderboardError.value = e.message || 'Could not load leaderboard.'
   }
 })
+
+async function logout() {
+  await auth.logout()
+  store.resetState()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -291,6 +337,40 @@ onMounted(async () => {
       transparent 8px
     ),
     linear-gradient(135deg, #392317 0%, #2b1a12 35%, #1f130d 70%, #140b08 100%);
+}
+
+.window-corner-btn {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid rgba(255, 240, 220, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.window-corner-btn {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid rgba(255, 240, 220, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-height: 42px;
+  padding: 0 18px;
 }
 
 .landing-board {
@@ -337,6 +417,24 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 240, 220, 0.9);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.top-right__logout {
+  border: 1px solid rgba(255, 240, 220, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
 }
 
 .evidence-card {
@@ -859,7 +957,22 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
   .landing {
-    padding: 22px 14px 40px;
+    padding: 64px 14px 40px;
+  }
+
+  .window-corner-btn {
+    top: 10px;
+    left: 10px;
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 11px;
+  }
+
+  .landing-caution-tape {
+    width: 140px;
+    right: -8px;
+    bottom: 22px;
+    opacity: 0.64;
   }
 
   .landing-caution-tape {
@@ -875,11 +988,16 @@ onMounted(async () => {
     gap: 6px;
   }
 
+  .top-right {
+    flex-wrap: wrap;
+  }
+
   .card-title-block,
   .room-list li {
     grid-template-columns: 1fr;
     display: grid;
   }
+
 }
 
 .mode-card {
