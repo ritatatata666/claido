@@ -12,13 +12,16 @@ public class RoomController : ControllerBase
 {
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
+    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
 
     public RoomController(
         AiService claude,
-        ConcurrentDictionary<Guid, SessionState> sessions)
+        ConcurrentDictionary<Guid, SessionState> sessions,
+        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
     {
         _claude = claude;
         _sessions = sessions;
+        _leaderboard = leaderboard;
     }
 
     [HttpPost("enter")]
@@ -81,7 +84,13 @@ public class RoomController : ControllerBase
             _ => "Not quite. Keep searching the room for clues."
         };
 
-        return Ok(new { correct, hint });
+        object? leaderboard = null;
+        if (correct && roomName == "vault")
+        {
+            leaderboard = RecordSolve(session, req.MemberId);
+        }
+
+        return Ok(new { correct, hint, leaderboard });
     }
 
     private static bool ValidateVaultAnswer(string answer, SessionState session)
@@ -92,5 +101,63 @@ public class RoomController : ControllerBase
             && parts[1] == session.VaultWord2
             && parts[2] == session.VaultWord3
             && parts[3] == session.VaultWord4;
+    }
+
+    private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
+    {
+        lock (session)
+        {
+            if (!session.CompletedAtUtc.HasValue)
+            {
+                var completedAt = DateTime.UtcNow;
+                session.CompletedAtUtc = completedAt;
+
+                var displayName = ResolveDisplayName(session, memberId);
+                var solveSeconds = Math.Max(1, (int)Math.Round((completedAt - session.StartedAtUtc).TotalSeconds));
+
+                _leaderboard.AddOrUpdate(
+                    displayName,
+                    _ => new LeaderboardEntry
+                    {
+                        DisplayName = displayName,
+                        SolveSeconds = solveSeconds,
+                        CompletedAtUtc = completedAt,
+                    },
+                    (_, existing) => existing.SolveSeconds <= solveSeconds
+                        ? existing
+                        : new LeaderboardEntry
+                        {
+                            DisplayName = displayName,
+                            SolveSeconds = solveSeconds,
+                            CompletedAtUtc = completedAt,
+                        });
+            }
+        }
+
+        return _leaderboard.Values
+            .OrderBy(entry => entry.SolveSeconds)
+            .ThenBy(entry => entry.CompletedAtUtc)
+            .Take(5)
+            .Select(entry => new
+            {
+                displayName = entry.DisplayName,
+                solveSeconds = entry.SolveSeconds,
+                completedAtUtc = entry.CompletedAtUtc,
+            });
+    }
+
+    private static string ResolveDisplayName(SessionState session, Guid? memberId)
+    {
+        if (memberId.HasValue)
+        {
+            var member = session.TeamMembers.FirstOrDefault(item => item.MemberId == memberId.Value);
+            if (member != null && !string.IsNullOrWhiteSpace(member.DisplayName))
+                return member.DisplayName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
+            return session.InvestigatorName.Trim();
+
+        return "Investigator";
     }
 }
