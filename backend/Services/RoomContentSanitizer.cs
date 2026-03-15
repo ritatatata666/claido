@@ -58,7 +58,7 @@ public static class RoomContentSanitizer
             $"VAULT_WORD={encodedWord}\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123");
 
         var accessLogPath = $"{home}/logs/access.log";
-        var suspiciousEntry = $"[{ExtractTime(session.IncidentTimestamp)}] WARNING Employee {session.Culprit.Id} accessed Server Room B (AFTER_HOURS)";
+        var suspiciousEntry = $"[{ExtractTime(session.IncidentTimestamp)}] WARN Employee {session.Culprit.Id} accessed Server Room B (AFTER_HOURS)";
         var accessLog = NormalizeAccessLog(files.GetValueOrDefault(accessLogPath) ?? string.Empty);
         if (!accessLog.Contains($"Employee {session.Culprit.Id}", StringComparison.OrdinalIgnoreCase))
         {
