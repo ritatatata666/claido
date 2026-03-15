@@ -742,8 +742,8 @@ async function submit() {
 .solved-stamp {
   font-family: var(--font-display);
   font-size: clamp(28px, 5.8vw, 52px);
-  color: rgba(38, 24, 20, 0.84);
-  border: 3px solid rgba(38, 24, 20, 0.84);
+  color: rgba(30, 96, 50, 0.88);
+  border: 3px solid rgba(30, 96, 50, 0.88);
   padding: 6px 20px;
   letter-spacing: 3px;
   text-transform: uppercase;
