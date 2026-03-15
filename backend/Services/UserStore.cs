@@ -107,6 +107,16 @@ public class UserStore
         }
     }
 
+    public GameHistoryEntry? GetHistoryCase(Guid userId, Guid sessionId)
+    {
+        lock (_syncRoot)
+        {
+            var file = LoadFileUnsafe();
+            var user = file.Users.FirstOrDefault(u => u.UserId == userId);
+            return user?.History.FirstOrDefault(h => h.SessionId == sessionId);
+        }
+    }
+
     public void AddHistory(Guid userId, GameHistoryEntry entry)
     {
         lock (_syncRoot)

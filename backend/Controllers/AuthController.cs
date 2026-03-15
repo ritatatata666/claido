@@ -88,6 +88,23 @@ public class AuthController : ControllerBase
         return Ok(_users.GetHistory(userId));
     }
 
+    [HttpGet("history/{sessionId:guid}")]
+    public IActionResult HistoryCase(Guid sessionId)
+    {
+        if (!TryGetUserId(out var userId))
+        {
+            return Unauthorized(new { error = "Not authenticated." });
+        }
+
+        var entry = _users.GetHistoryCase(userId, sessionId);
+        if (entry == null)
+        {
+            return NotFound(new { error = "Case history not found." });
+        }
+
+        return Ok(entry);
+    }
+
     private bool TryGetUserId(out Guid userId)
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier);

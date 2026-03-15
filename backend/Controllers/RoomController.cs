@@ -105,7 +105,10 @@ public class RoomController : ControllerBase
                 Points = Math.Max(0, points),
                 WrongAnswers = Math.Max(0, req.WrongAnswers.GetValueOrDefault(0)),
                 TimePenaltySeconds = Math.Max(0, req.TimePenaltySeconds.GetValueOrDefault(0)),
-                TeamMode = session.TeamMode
+                TeamMode = session.TeamMode,
+                CaseFile = $"CASE {session.SessionId.ToString()[..8].ToUpperInvariant()}",
+                CulpritName = session.Culprit?.Name ?? "",
+                Questions = BuildQuestionReview(session),
             });
             session.HistoryRecorded = true;
         }
@@ -133,6 +136,48 @@ public class RoomController : ControllerBase
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(value, out userId);
+    }
+
+    private static List<QuestionReviewEntry> BuildQuestionReview(SessionState session)
+    {
+        return new List<QuestionReviewEntry>
+        {
+            new()
+            {
+                QuestionId = "shell-1",
+                Room = "NovaShell",
+                Prompt = "What is the Shell room keyword?",
+                Solution = session.VaultWord1
+            },
+            new()
+            {
+                QuestionId = "mail-1",
+                Room = "NovaMail",
+                Prompt = "What is the Mail room keyword?",
+                Solution = session.VaultWord2
+            },
+            new()
+            {
+                QuestionId = "wiki-1",
+                Room = "NovaWiki",
+                Prompt = "What is the Wiki room keyword?",
+                Solution = session.VaultWord3
+            },
+            new()
+            {
+                QuestionId = "search-1",
+                Room = "NovaSearch",
+                Prompt = "What is the Search room keyword?",
+                Solution = session.VaultWord4
+            },
+            new()
+            {
+                QuestionId = "vault-1",
+                Room = "Vault",
+                Prompt = "What is the final four-word vault passphrase?",
+                Solution = session.VaultCode
+            }
+        };
     }
 
     private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
@@ -190,6 +235,6 @@ public class RoomController : ControllerBase
         if (!string.IsNullOrWhiteSpace(session.InvestigatorName))
             return session.InvestigatorName.Trim();
 
-        return "Investigator";
+        return "Player";
     }
 }

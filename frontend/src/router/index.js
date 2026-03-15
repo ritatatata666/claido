@@ -4,6 +4,7 @@ import LandingView from '../views/LandingView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import HistoryView from '../views/HistoryView.vue'
+import HistoryCaseView from '../views/HistoryCaseView.vue'
 import HubView from '../views/HubView.vue'
 import ShellView from '../views/ShellView.vue'
 import DatabaseView from '../views/DatabaseView.vue'
@@ -19,6 +20,7 @@ const routes = [
   { path: '/register', component: RegisterView, meta: { guestOnly: true } },
   { path: '/', component: LandingView, meta: { requiresAuth: true } },
   { path: '/history', component: HistoryView, meta: { requiresAuth: true } },
+  { path: '/history/:sessionId', component: HistoryCaseView, meta: { requiresAuth: true } },
   { path: '/hub', component: HubView, meta: { requiresAuth: true } },
   { path: '/report', component: ReportView },
   { path: '/shell', component: ShellView, meta: { requiresAuth: true } },

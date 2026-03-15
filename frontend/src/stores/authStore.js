@@ -98,6 +98,17 @@ export const useAuthStore = defineStore('auth', {
       return res.json()
     },
 
+    async fetchHistoryCase(sessionId) {
+      const res = await apiFetch(`/api/auth/history/${sessionId}`, {
+        method: 'GET',
+      })
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}))
+        throw new Error(payload?.error || 'Failed to fetch case history.')
+      }
+      return res.json()
+    },
+
     async logout() {
       await apiFetch('/api/auth/logout', {
         method: 'POST',

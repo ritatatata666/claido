@@ -29,6 +29,17 @@ public class GameHistoryEntry
     public int WrongAnswers { get; set; }
     public int TimePenaltySeconds { get; set; }
     public string TeamMode { get; set; } = "standard";
+    public string CaseFile { get; set; } = "";
+    public string CulpritName { get; set; } = "";
+    public List<QuestionReviewEntry> Questions { get; set; } = new();
+}
+
+public class QuestionReviewEntry
+{
+    public string QuestionId { get; set; } = "";
+    public string Room { get; set; } = "";
+    public string Prompt { get; set; } = "";
+    public string Solution { get; set; } = "";
 }
 
 public class UserRecord

@@ -5,7 +5,7 @@
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Case Archive</span>
         <div class="top-right">
-          <span class="case-file">Recent investigations</span>
+          <span class="case-file">CASE FILE #NC-2025-0303</span>
           <span>Signed in as <strong>{{ auth.user?.username }}</strong></span>
           <button class="top-right__logout" @click="logout">Logout</button>
         </div>
@@ -13,51 +13,68 @@
 
       <div class="hero-block">
         <div class="stamp-frame">
-          <h1 class="claido-heading">ARCHIVE</h1>
+          <h1 class="claido-heading" data-text="CLAIDO">CLAIDO</h1>
         </div>
         <div class="case-header">
           <span class="case-header__label">NovaCorp Investigation Logs</span>
           <span class="case-header__divider">—</span>
-          <span class="case-header__tag">Authenticated History</span>
+          <span class="case-header__tag">Investigator Access Only</span>
         </div>
       </div>
 
       <div class="folder-wrapper">
-        <div class="folder-tab-main">RECENT CASES</div>
-        <section class="briefing-card">
-          <div class="watermark">ARCHIVE</div>
-          <div class="card-inner">
-            <p v-if="loading">Loading history...</p>
-            <p v-else-if="error" class="history-error">{{ error }}</p>
-            <p v-else-if="history.length === 0">No completed cases yet.</p>
-            <div v-else class="history-list">
-              <article v-for="entry in history" :key="entry.sessionId + entry.completedAtUtc" class="folder-item">
-                <header class="folder-tab">
-                  <span>CASE {{ String(entry.sessionId).slice(0, 8).toUpperCase() }}</span>
-                </header>
-                <div class="folder-body">
-                  <div class="history-row">
-                    <span class="history-label">Points</span>
-                    <span class="history-value history-value--points">{{ entry.points }}</span>
-                  </div>
-                  <div class="history-row">
-                    <span class="history-label">Elapsed</span>
-                    <span class="history-value">{{ formatDuration(entry.elapsedSeconds) }}</span>
-                  </div>
-                  <div class="history-row">
-                    <span class="history-label">Completed</span>
-                    <span class="history-value">{{ formatDate(entry.completedAtUtc) }}</span>
-                  </div>
-                  <div class="history-row">
-                    <span class="history-label">Mode</span>
-                    <span class="history-value">{{ entry.teamMode }}</span>
-                  </div>
+        <div class="folder-tab">
+          <span class="folder-tab__title">CASE ARCHIVE</span>
+          <span class="folder-tab__state">OPEN</span>
+        </div>
+        <div class="briefing-card is-revealed">
+          <div class="briefing-card__content">
+            <div class="watermark">ARCHIVE</div>
+            <div class="card-inner">
+              <div class="card-header">
+                <div class="card-title-block">
+                  <span class="card-stamp-label">INVESTIGATION LOGS</span>
+                  <span class="card-date">2025-03-03</span>
                 </div>
-              </article>
+              </div>
+              <p class="card-summary archive-summary">
+                Review completed cases from your account.
+                Click a case to review the questions and solutions.
+              </p>
+              <div class="archive-list-wrap">
+                <div class="leaderboard-card__header">
+                  <span class="leaderboard-card__eyebrow">Recent Investigations</span>
+                  <h3 class="leaderboard-card__title">Case Archive</h3>
+                </div>
+                <div v-if="loading" class="leaderboard-card__empty">Loading history...</div>
+                <div v-else-if="history.length === 0" class="leaderboard-card__empty">No completed cases yet.</div>
+                <div v-else class="leaderboard-list">
+                  <button
+                    v-for="(entry, index) in history"
+                    :key="entry.sessionId + entry.completedAtUtc"
+                    class="leaderboard-row archive-row"
+                    type="button"
+                    @click="goToCase(entry.sessionId)"
+                  >
+                    <span class="leaderboard-rank">#{{ index + 1 }}</span>
+                    <span class="leaderboard-name archive-name">
+                      <strong>CASE {{ String(entry.sessionId).slice(0, 8).toUpperCase() }}</strong>
+                      <small>{{ formatDate(entry.completedAtUtc) }} · {{ entry.teamMode }}</small>
+                    </span>
+                    <span class="leaderboard-time archive-time">{{ formatDuration(entry.elapsedSeconds) }}</span>
+                    <span class="archive-points">{{ entry.points }} pts</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
+
+      <div v-if="error" class="error-msg">{{ error }}</div>
+
+      <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+      <img :src="cautionTapeImg" alt="" class="landing-caution-tape" aria-hidden="true" />
     </div>
   </div>
 </template>
@@ -65,12 +82,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import cautionTapeImg from '../../images/caution.webp'
 import { useAuthStore } from '../stores/authStore.js'
 import { useGameStore } from '../stores/gameStore.js'
 
 const router = useRouter()
 const auth = useAuthStore()
 const game = useGameStore()
+
 const loading = ref(false)
 const error = ref('')
 const history = ref([])
@@ -93,16 +112,26 @@ async function logout() {
   router.push('/login')
 }
 
-function formatDuration(seconds) {
-  const s = Number(seconds) || 0
-  const m = Math.floor(s / 60)
-  const rem = s % 60
-  return `${m}m ${String(rem).padStart(2, '0')}s`
+function formatDuration(totalSeconds) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const minutes = Math.floor(safe / 60)
+  const seconds = safe % 60
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60)
+    const remMinutes = minutes % 60
+    return `${hours}:${String(remMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString('en-AU')
+}
+
+function goToCase(sessionId) {
+  if (!sessionId) return
+  router.push(`/history/${sessionId}`)
 }
 
 onMounted(() => {
@@ -114,7 +143,7 @@ onMounted(() => {
 .landing {
   min-height: 100vh;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 40px 24px 60px;
   overflow-y: auto;
   position: relative;
@@ -124,19 +153,19 @@ onMounted(() => {
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.03) 0px,
-      rgba(255, 255, 255, 0.03) 1px,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
       transparent 1px,
       transparent 8px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.015) 0px,
-      rgba(255, 255, 255, 0.015) 1px,
+      rgba(255, 255, 255, 0.01) 0px,
+      rgba(255, 255, 255, 0.01) 1px,
       transparent 1px,
       transparent 8px
     ),
-    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+    linear-gradient(135deg, #392317 0%, #2b1a12 35%, #1f130d 70%, #140b08 100%);
 }
 
 .window-corner-btn {
@@ -166,6 +195,18 @@ onMounted(() => {
   position: relative;
 }
 
+.landing-caution-tape {
+  position: absolute;
+  right: -18px;
+  bottom: 36px;
+  width: 190px;
+  opacity: 0.72;
+  transform: rotate(-13deg);
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.42));
+}
+
 .evidence-strip {
   position: relative;
   z-index: 1;
@@ -185,7 +226,10 @@ onMounted(() => {
 }
 
 .classified-badge,
-.case-file {
+.case-file,
+.card-stamp-label,
+.card-date,
+.disclaimer {
   font-family: var(--font-mono);
 }
 
@@ -325,129 +369,285 @@ onMounted(() => {
   position: relative;
 }
 
-.folder-tab-main {
+.folder-tab {
   position: relative;
-  display: inline-block;
   margin-left: 24px;
-  padding: 6px 20px 4px;
-  background: #c8a97a;
-  border-radius: 6px 6px 0 0;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 20px;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(180deg, #d7b98d 0%, #c7a87c 100%);
+  border: 1px solid #b08d5f;
+  border-bottom: none;
+  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.35) inset;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: #624220;
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #5a3d24;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.folder-tab__title {
+  font-size: 11px;
+}
+
+.folder-tab__state {
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  color: rgba(98, 66, 32, 0.72);
 }
 
 .briefing-card {
   width: 100%;
   position: relative;
+  border: 1px solid #b08d5f;
+  border-radius: 0 8px 8px 8px;
   background:
     repeating-linear-gradient(
       180deg,
-      transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
+      rgba(255, 255, 255, 0.045) 0px,
+      rgba(255, 255, 255, 0.045) 1px,
+      transparent 1px,
+      transparent 28px
     ),
-    linear-gradient(180deg, #d4b896, #c8a97a);
-  border: 1px solid #a88b62;
-  border-radius: 0 6px 6px 6px;
+    linear-gradient(180deg, #d4b58a 0%, #cba87a 100%);
   box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 28px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-.briefing-card::after {
+.briefing-card__content {
+  position: relative;
+}
+
+.briefing-card::before,
+.leaderboard-card::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(180deg, transparent 0 24px, rgba(121, 92, 67, 0.08) 24px 25px);
   pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent 22%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.08), transparent 30%);
+}
+
+.briefing-card::after,
+.leaderboard-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(transparent 0 97%, rgba(0, 0, 0, 0.04) 100%);
+  background-size: 100% 30px;
+  opacity: 0.45;
 }
 
 .watermark {
   position: absolute;
-  top: 48%;
+  top: 50%;
   left: 52%;
-  transform: translate(-50%, -50%) rotate(-24deg);
-  font-size: clamp(44px, 9vw, 88px);
-  letter-spacing: 6px;
-  color: rgba(139, 69, 19, 0.1);
+  transform: translate(-50%, -50%) rotate(-18deg);
+  font-size: clamp(44px, 8vw, 88px);
+  letter-spacing: 7px;
   font-weight: 900;
+  color: rgba(100, 58, 31, 0.14);
   pointer-events: none;
+  user-select: none;
 }
 
 .card-inner {
   position: relative;
   z-index: 1;
-  padding: 32px 32px 36px;
+  padding: 30px 32px 36px;
+  color: #3d2717;
 }
 
-.history-list {
-  display: grid;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 14px;
+  margin-bottom: 16px;
 }
 
-.folder-item {
-  position: relative;
-}
-
-.folder-tab {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 14px;
-  border: 1px solid rgba(105, 75, 44, 0.3);
-  border-bottom: 0;
-  border-radius: 8px 8px 0 0;
-  background: linear-gradient(180deg, #d6b78a, #ccb082);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #5e3f26;
-}
-
-.folder-body {
-  border: 1px solid rgba(105, 75, 44, 0.3);
-  border-radius: 0 8px 8px 8px;
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(255, 245, 230, 0.95), rgba(248, 234, 211, 0.95));
+.card-title-block {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.card-stamp-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #7f4e2c;
+  text-transform: uppercase;
+}
+
+.card-date {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: rgba(79, 50, 28, 0.74);
+}
+
+.card-summary {
+  margin: 0;
+  line-height: 1.6;
+  font-size: 15px;
+  max-width: 60ch;
+}
+
+.archive-summary {
+  margin-bottom: 0;
+}
+
+.archive-list-wrap {
+  margin-top: 18px;
+}
+
+.error-msg {
+  width: 100%;
+  max-width: 660px;
+  color: rgba(255, 194, 180, 0.95);
+  background: rgba(94, 23, 20, 0.55);
+  border: 1px solid rgba(198, 84, 84, 0.55);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.disclaimer {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: rgba(255, 230, 190, 0.55);
+  text-transform: uppercase;
+}
+
+.leaderboard-card {
+  width: 100%;
+  max-width: 660px;
+  position: relative;
+  border: 1px solid #b08d5f;
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 28px
+    ),
+    linear-gradient(180deg, #cfb084 0%, #c29f70 100%);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  padding: 18px 20px;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.leaderboard-card__header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.leaderboard-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #7c4a28;
+}
+
+.leaderboard-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 1px;
+  color: #4c2f1c;
+}
+
+.leaderboard-list {
+  display: grid;
   gap: 8px;
 }
 
-.history-row {
+.leaderboard-row {
+  width: 100%;
+  border: 1px solid rgba(108, 72, 39, 0.2);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 246, 230, 0.52);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.archive-row {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.archive-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(108, 72, 39, 0.45);
+  background: rgba(255, 246, 230, 0.7);
+}
+
+.leaderboard-rank,
+.leaderboard-time,
+.leaderboard-name {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-rank {
+  font-size: 11px;
+  color: #7b4c2a;
+}
+
+.leaderboard-name {
+  color: #4d2f1a;
+}
+
+.leaderboard-time {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #6a3e20;
+}
+
+.archive-name {
   display: grid;
   gap: 3px;
 }
 
-.history-label {
+.archive-name small {
+  color: rgba(77, 47, 26, 0.78);
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8a6b4a;
 }
 
-.history-value {
-  color: #523925;
+.archive-points {
   font-family: var(--font-mono);
   font-size: 12px;
-}
-
-.history-value--points {
-  color: #9b4a0d;
+  color: #8c3f16;
   font-weight: 700;
 }
 
-.history-error {
-  color: #8f2018;
+.leaderboard-card__empty {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(77, 47, 26, 0.78);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .landing {
     padding-top: 64px;
   }
@@ -470,16 +670,24 @@ onMounted(() => {
     flex-wrap: wrap;
   }
 
-  .case-header {
-    justify-content: flex-start;
-  }
-
-  .folder-tab-main {
+  .folder-tab {
     margin-left: 12px;
   }
+}
 
-  .folder-body {
-    grid-template-columns: 1fr 1fr;
+@media (max-width: 640px) {
+  .card-inner {
+    padding: 24px 20px 26px;
+  }
+
+  .leaderboard-row {
+    grid-template-columns: auto 1fr;
+    gap: 8px 12px;
+  }
+
+  .archive-time,
+  .archive-points {
+    grid-column: 2;
   }
 }
 </style>

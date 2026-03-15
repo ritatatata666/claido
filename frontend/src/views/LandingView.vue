@@ -93,7 +93,7 @@
           <input v-model="soloName" class="npc-input" placeholder="Investigator name" />
           <button
             class="start-btn"
-            :disabled="loading"
+            :disabled="loading || !soloName.trim()"
             @click="startSoloSession"
           >
             <span v-if="loading">
@@ -114,8 +114,12 @@
                 <span class="team-lobby-card__eyebrow">Host a Room</span>
                 <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
                 <div class="team-lobby-card__actions">
-                  <input v-model="hostName" class="npc-input" placeholder="Host display name" />
-                  <button class="team-lobby-card__button" :disabled="loading" @click="createTeamRoom">
+                  <input v-model="hostName" class="npc-input" placeholder="Investigator name" />
+                  <select v-model="hostRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="loading || !hostName.trim()" @click="createTeamRoom">
                     <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
                     <span v-else>Create Team Room</span>
                   </button>
@@ -129,8 +133,12 @@
                 <p class="mode-card__team-text">Enter the 6-character code from your host to join their session.</p>
                 <div class="team-lobby-card__actions">
                   <input v-model="joinCodeInput" class="npc-input" placeholder="Join code (e.g. ABC123)" maxlength="6" style="text-transform:uppercase" />
-                  <input v-model="joinName" class="npc-input" placeholder="Your display name" />
-                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim()" @click="joinExistingSession">
+                  <input v-model="joinName" class="npc-input" placeholder="Investigator name" />
+                  <select v-model="joinRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim() || !joinName.trim()" @click="joinExistingSession">
                     <span v-if="joinLoading"><span class="spinner-dot"></span> Joining...</span>
                     <span v-else>Join Session</span>
                   </button>
@@ -183,10 +191,12 @@ const store = useGameStore()
 const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
-const soloName = ref(store.investigatorName || 'Investigator')
-const hostName = ref(store.investigatorName || 'Host Investigator')
+const soloName = ref('')
+const hostName = ref('')
+const hostRole = ref('investigator')
 const joinCodeInput = ref('')
 const joinName = ref('')
+const joinRole = ref('investigator')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
@@ -204,11 +214,16 @@ const rooms = [
 ]
 
 async function startSoloSession() {
+  const name = soloName.value.trim()
+  if (!name) {
+    error.value = 'Enter investigator name.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
     store.configureTeamMode('standard')
-    await store.createSession(soloName.value.trim() || 'Investigator')
+    await store.createSession(name)
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
@@ -222,11 +237,20 @@ async function joinExistingSession() {
     joinError.value = 'Enter a join code first.'
     return
   }
+  const name = joinName.value.trim()
+  if (!name) {
+    joinError.value = 'Enter investigator name.'
+    return
+  }
   joinLoading.value = true
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.joinTeamSession(joinCodeInput.value.trim(), joinName.value.trim() || 'Investigator')
+    await store.joinTeamSession(
+      joinCodeInput.value.trim(),
+      name,
+      joinRole.value
+    )
     router.push('/hub')
   } catch (e) {
     joinError.value = e.message || 'Could not join that session.'
@@ -236,12 +260,20 @@ async function joinExistingSession() {
 }
 
 async function createTeamRoom() {
+  const name = hostName.value.trim()
+  if (!name) {
+    error.value = 'Enter investigator name.'
+    return
+  }
   loading.value = true
   error.value = ''
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.createTeamRoom(hostName.value.trim() || 'Host Investigator')
+    await store.createTeamRoom(
+      name,
+      hostRole.value
+    )
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to create a team room. Is the backend running?'

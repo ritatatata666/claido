@@ -12,7 +12,7 @@ public class Employee
 public class SessionState
 {
     public Guid SessionId { get; set; } = Guid.NewGuid();
-    public string InvestigatorName { get; set; } = "Investigator";
+    public string InvestigatorName { get; set; } = "";
     public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAtUtc { get; set; }
     public Guid OwnerUserId { get; set; }
@@ -105,11 +105,13 @@ public class JoinTeamRequest
 {
     public string JoinCode { get; set; } = "";
     public string DisplayName { get; set; } = "";
+    public string PreferredRole { get; set; } = "";
 }
 
 public class CreateTeamRoomRequest
 {
     public string DisplayName { get; set; } = "";
+    public string PreferredRole { get; set; } = "";
 }
 
 public class TeamClueRequest
@@ -122,7 +124,7 @@ public class TeamClueRequest
 
 public class LeaderboardEntry
 {
-    public string DisplayName { get; set; } = "Investigator";
+    public string DisplayName { get; set; } = "Player";
     public int SolveSeconds { get; set; }
     public DateTime CompletedAtUtc { get; set; } = DateTime.UtcNow;
 }

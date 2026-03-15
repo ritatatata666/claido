@@ -55,7 +55,7 @@ public class TeamController : ControllerBase
             member = new TeamMember
             {
                 DisplayName = displayName,
-                Role = DetermineRole(session),
+                Role = ResolveRole(request.PreferredRole, session),
                 JoinedAt = DateTime.UtcNow
             };
             session.TeamMembers.Add(member);
@@ -83,7 +83,7 @@ public class TeamController : ControllerBase
             _sessions[session.SessionId] = session;
 
             var displayName = string.IsNullOrWhiteSpace(request?.DisplayName)
-                ? "Host Investigator"
+                ? "Host"
                 : request.DisplayName.Trim();
 
             TeamMember member;
@@ -93,7 +93,7 @@ public class TeamController : ControllerBase
                 member = new TeamMember
                 {
                     DisplayName = displayName,
-                    Role = DetermineRole(session),
+                    Role = ResolveRole(request?.PreferredRole, session),
                     JoinedAt = DateTime.UtcNow
                 };
                 session.TeamMembers.Add(member);
@@ -237,6 +237,18 @@ public class TeamController : ControllerBase
             return "good";
 
         return _rng.Next(100) < 25 ? "villain" : "good";
+    }
+
+    private string ResolveRole(string? preferredRole, SessionState session)
+    {
+        var normalized = preferredRole?.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "villain" => "villain",
+            "investigator" => "good",
+            "good" => "good",
+            _ => DetermineRole(session)
+        };
     }
 
     private void AddAction(SessionState session, TeamActionEntry entry)

@@ -36,7 +36,7 @@ public class SessionController : ControllerBase
         {
             var session = await _sessionCreator.CreateSessionAsync();
             session.InvestigatorName = string.IsNullOrWhiteSpace(request?.DisplayName)
-                ? "Investigator"
+                ? "Player"
                 : request!.DisplayName.Trim();
             session.OwnerUserId = userId;
             session.StartedAtUtc = DateTime.UtcNow;

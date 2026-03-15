@@ -89,7 +89,7 @@ function normalizeActionLog(entries = []) {
 
 function normalizeLeaderboardEntries(entries = []) {
   return entries.map(entry => ({
-    displayName: entry.displayName ?? entry.DisplayName ?? 'Investigator',
+    displayName: entry.displayName ?? entry.DisplayName ?? 'Player',
     solveSeconds: Number(entry.solveSeconds ?? entry.SolveSeconds ?? 0),
     completedAtUtc: entry.completedAtUtc ?? entry.CompletedAtUtc ?? null,
   }))
@@ -143,7 +143,7 @@ export const useGameStore = defineStore('game', {
     joinCode: _persisted.joinCode ?? '',
     playerId: _persisted.playerId ?? null,
     lockedClueIds: _persisted.lockedClueIds ?? [],
-    investigatorName: _persisted.investigatorName ?? 'Investigator',
+    investigatorName: _persisted.investigatorName ?? '',
     leaderboard: normalizeLeaderboardEntries(_persisted.leaderboard ?? []),
     notes: _persisted.notes ?? '',
   }),
@@ -155,7 +155,7 @@ export const useGameStore = defineStore('game', {
         const me = state.teamMembers.find(member => member.memberId === state.playerId)
         if (me?.displayName) return me.displayName
       }
-      return state.investigatorName || 'Investigator'
+      return state.investigatorName || 'Player'
     },
     elapsedSeconds: (state) => {
       if (!state.gameStartTime) return 0
@@ -184,10 +184,12 @@ export const useGameStore = defineStore('game', {
       this.joinCode = ''
       this.playerId = null
       this.lockedClueIds = []
+      this.investigatorName = ''
       persistState(this)
     },
 
-    async createSession(displayName = 'Investigator') {
+    async createSession(displayName) {
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
       const res = await apiFetch('/api/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,11 +207,12 @@ export const useGameStore = defineStore('game', {
       return data
     },
 
-    async createTeamRoom(displayName = 'Host Investigator') {
+    async createTeamRoom(displayName, preferredRole = 'investigator') {
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
       const res = await apiFetch('/api/session/team/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify({ displayName, preferredRole }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -223,15 +226,17 @@ export const useGameStore = defineStore('game', {
       return payload
     },
 
-    async joinTeamSession(joinCode, displayName = 'Investigator') {
+    async joinTeamSession(joinCode, displayName, preferredRole = 'investigator') {
       const code = joinCode ?? this.joinCode
       if (!code) throw new Error('Join code is required.')
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
       const res = await apiFetch('/api/session/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           joinCode: code,
           displayName,
+          preferredRole,
         }),
       })
       if (!res.ok) {
