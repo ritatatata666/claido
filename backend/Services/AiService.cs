@@ -184,7 +184,7 @@ Generate all 8 employees with realistic diverse names and roles. Vault words mus
             raw = raw[start..end].Trim();
         }
 
-        return raw;
+        return RoomContentSanitizer.Normalize(roomName, raw, session);
     }
 
     private static string BuildShellPrompt(string ctx, SessionState s) => $$"""
