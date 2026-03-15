@@ -1,23 +1,5 @@
 <template>
   <div class="hub" :class="{ 'is-team': store.teamMode === 'team' }">
-    <div v-if="introVisible" class="hub-intro-backdrop" @click.self="dismissIntro">
-      <div class="hub-intro-file" role="dialog" aria-modal="true" aria-label="Investigation briefing">
-        <div class="hub-intro-file__topline">INTERNAL ACCESS MEMO</div>
-        <h2 class="hub-intro-title">Welcome, Detective {{ detectiveName }}</h2>
-        <p class="hub-intro-copy">
-          NovaCorp was breached overnight and someone inside staged the cover-up. Every room on this board contains part of the truth.
-        </p>
-        <p class="hub-intro-copy">
-          Your objective is simple: extract four key clues, identify the culprit, and unlock the vault before the trail goes cold.
-        </p>
-        <div class="hub-intro-tags">
-          <span class="hub-intro-tag">READ SIGNALS</span>
-          <span class="hub-intro-tag">CONNECT EVIDENCE</span>
-          <span class="hub-intro-tag">CRACK VAULT</span>
-        </div>
-        <button class="hub-intro-cta" type="button" @click="dismissIntro">OPEN CASEBOARD</button>
-      </div>
-    </div>
     <div class="hub-board">
 
       <header class="hub-topbar evidence-strip">
@@ -214,11 +196,6 @@ import TeamModePanel from '../components/TeamModePanel.vue'
 const router = useRouter()
 const store = useGameStore()
 const menuOpen = ref(false)
-const introVisible = ref(false)
-
-const detectiveName = computed(() => store.currentPlayerName || store.investigatorName || 'Investigator')
-
-const INTRO_SEEN_PREFIX = 'claido_hub_intro_seen_'
 
 const mainRooms = [
   {
@@ -304,37 +281,11 @@ const elapsed = ref(0)
 let timerInterval = null
 let teamRefreshInterval = null
 
-function introStorageKey() {
-  return `${INTRO_SEEN_PREFIX}${store.sessionId || 'no-session'}`
-}
-
-function dismissIntro() {
-  introVisible.value = false
-  try {
-    localStorage.setItem(introStorageKey(), '1')
-  } catch {}
-}
-
-function onHubKeydown(event) {
-  if (event.key === 'Escape' && introVisible.value) {
-    dismissIntro()
-  }
-}
-
 onMounted(() => {
   if (!store.sessionId) {
     router.replace('/')
     return
   }
-
-  try {
-    introVisible.value = localStorage.getItem(introStorageKey()) !== '1'
-  } catch {
-    introVisible.value = true
-  }
-
-  window.addEventListener('keydown', onHubKeydown)
-
   if (store.teamMode === 'team') {
     store.refreshTeamState().catch(() => {})
     teamRefreshInterval = setInterval(() => {
@@ -353,7 +304,6 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(timerInterval)
   clearInterval(teamRefreshInterval)
-  window.removeEventListener('keydown', onHubKeydown)
 })
 
 const formattedTime = computed(() => {
@@ -423,99 +373,6 @@ const formattedTime = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.hub-intro-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  background: rgba(5, 4, 4, 0.74);
-  backdrop-filter: blur(2px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.hub-intro-file {
-  width: min(680px, 94vw);
-  background:
-    repeating-linear-gradient(
-      180deg,
-      rgba(92, 67, 46, 0.08) 0px,
-      rgba(92, 67, 46, 0.08) 2px,
-      rgba(214, 191, 156, 0.06) 2px,
-      rgba(214, 191, 156, 0.06) 4px
-    ),
-    linear-gradient(165deg, rgba(227, 206, 173, 0.96) 0%, rgba(196, 171, 131, 0.95) 54%, rgba(171, 143, 104, 0.94) 100%);
-  border: 2px solid rgba(84, 55, 35, 0.72);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 236, 200, 0.35);
-  padding: 28px 28px 26px;
-  transform: rotate(-0.35deg);
-}
-
-.hub-intro-file__topline {
-  display: inline-block;
-  font-size: 11px;
-  letter-spacing: 1.9px;
-  font-weight: 800;
-  color: rgba(99, 47, 35, 0.88);
-  border: 1px solid rgba(99, 47, 35, 0.45);
-  padding: 4px 10px;
-  margin-bottom: 14px;
-}
-
-.hub-intro-title {
-  margin: 0;
-  color: #2f140f;
-  font-size: clamp(22px, 4vw, 34px);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  text-shadow: 0 1px 0 rgba(255, 245, 220, 0.45);
-}
-
-.hub-intro-copy {
-  margin: 14px 0 0;
-  color: rgba(40, 20, 14, 0.9);
-  font-size: 15px;
-  line-height: 1.6;
-  max-width: 62ch;
-}
-
-.hub-intro-tags {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.hub-intro-tag {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #5e1d1d;
-  border: 1px solid rgba(94, 29, 29, 0.36);
-  background: rgba(255, 247, 227, 0.36);
-  padding: 5px 10px;
-}
-
-.hub-intro-cta {
-  margin-top: 18px;
-  border: 1px solid rgba(78, 29, 27, 0.72);
-  background: linear-gradient(180deg, #813532 0%, #5d1e1d 100%);
-  color: #f8e5cf;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 1.2px;
-  font-weight: 800;
-  padding: 11px 16px;
-  cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-}
-
-.hub-intro-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 16px rgba(70, 21, 21, 0.34);
 }
 
 .hub-content-area {
