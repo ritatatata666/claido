@@ -81,7 +81,7 @@
           </div>
           <div v-for="clue in store.discoveredClues" :key="clue.id" class="reminder-clue">
             <span class="reminder-room">{{ clue.room }}</span>
-            {{ clue.text }}
+            {{ getDisplayedClueText(clue) }}
           </div>
         </div>
 
@@ -131,6 +131,7 @@ const solved = ref(false)
 const feedback = ref('')
 const feedbackType = ref('error')
 const solveTime = ref(0)
+const wrongAttempts = ref(0)
 
 const formattedTime = computed(() => {
   return formatClock(solveTime.value, true)
@@ -168,6 +169,12 @@ function isCurrentEntry(entry, index) {
     && Number(entry.solveSeconds) === Number(solveTime.value)
 }
 
+function getDisplayedClueText(clue) {
+  const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+  if (clue?.locked && isMaskedView) return 'Clue hidden by the saboteur.'
+  return clue?.text || ''
+}
+
 async function submit() {
   const answer = passphrase.value.trim()
   if (!answer) return
@@ -175,12 +182,20 @@ async function submit() {
   feedback.value = ''
 
   try {
-    const res = await store.validateAnswer('vault', answer)
+    const elapsed = Math.floor((Date.now() - store.gameStartTime) / 1000)
+    const points = Math.max(0, 5000 - elapsed * 4)
+    const res = await store.validateAnswer('vault', answer, {
+      elapsedSeconds: elapsed,
+      points,
+      wrongAnswers: wrongAttempts.value,
+      timePenaltySeconds: 0,
+    })
     if (res.correct) {
       solveTime.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
       store.markRoomComplete('vault')
       solved.value = true
     } else {
+      wrongAttempts.value += 1
       feedbackType.value = 'error'
       feedback.value = res.hint || 'Incorrect passphrase. Keep investigating.'
     }

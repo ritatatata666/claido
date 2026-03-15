@@ -1,11 +1,15 @@
 <template>
   <div class="landing">
+    <button class="window-corner-btn" @click="router.push('/history')">Recent Cases</button>
     <div class="landing-board">
 
       <div class="top-bar evidence-strip">
         <span class="classified-badge">● Active Case</span>
-        <span class="case-file">CASE FILE #NC-2025-0303</span>
-        <button v-if="store.sessionId" class="top-report-btn" @click="router.push('/report')">📋 Case Report</button>
+        <div class="top-right">
+          <span class="case-file">CASE FILE #NC-2025-0303</span>
+          <span>Signed in as <strong>{{ auth.user?.username }}</strong></span>
+          <button class="top-right__logout" @click="logout">Logout</button>
+        </div>
       </div>
 
       <!-- Stamp heading -->
@@ -22,31 +26,47 @@
 
       <!-- Briefing card styled as manila case folder -->
       <div class="folder-wrapper">
-        <div class="folder-tab">CASE REPORT</div>
-        <div class="briefing-card">
-        <div class="watermark">TOP SECRET</div>
-        <div class="card-inner">
-          <div class="card-header">
-            <div class="card-title-block">
-              <span class="card-stamp-label">INCIDENT REPORT</span>
-              <span class="card-date">2025-03-03</span>
+        <button
+          class="folder-tab folder-tab--toggle"
+          :class="{ 'is-open': briefingOpen }"
+          type="button"
+          :aria-expanded="briefingOpen ? 'true' : 'false'"
+          @click="briefingOpen = !briefingOpen"
+        >
+          <span class="folder-tab__title">CASE REPORT</span>
+          <span class="folder-tab__state">{{ briefingOpen ? 'CLOSE FILE' : 'REVEAL FILE' }}</span>
+        </button>
+        <div class="briefing-card" :class="{ 'is-revealed': briefingOpen }">
+          <transition name="file-reveal" mode="out-in">
+            <div v-if="briefingOpen" key="open" class="briefing-card__content">
+              <div class="watermark">TOP SECRET</div>
+              <div class="card-inner">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <span class="card-stamp-label">INCIDENT REPORT</span>
+                    <span class="card-date">2025-03-03</span>
+                  </div>
+                </div>
+                <p class="card-summary">
+                  A corporate breach occurred overnight at NovaCorp headquarters.
+                  Sensitive vault data was compromised. The culprit is still at large.
+                  You have been deployed as a forensic investigator with access to
+                  seven internal systems. Find the culprit. Unlock the vault.
+                </p>
+                <ul class="room-list">
+                  <li v-for="room in rooms" :key="room.id">
+                    <span class="bullet">▪</span>
+                    <strong>{{ room.label }}</strong> — {{ room.desc }}
+                  </li>
+                </ul>
+                <div class="declassified-stamp">DECLASSIFIED</div>
+              </div>
             </div>
-          </div>
-          <p class="card-summary">
-            A corporate breach occurred overnight at NovaCorp headquarters.
-            Sensitive vault data was compromised. The culprit is still at large.
-            You have been deployed as a forensic investigator with access to
-            seven internal systems. Find the culprit. Unlock the vault.
-          </p>
-          <ul class="room-list">
-            <li v-for="room in rooms" :key="room.id">
-              <span class="bullet">▪</span>
-              <strong>{{ room.label }}</strong> — {{ room.desc }}
-            </li>
-          </ul>
-          <div class="declassified-stamp">DECLASSIFIED</div>
+            <div v-else key="closed" class="briefing-card__blank" aria-hidden="true">
+              <span class="briefing-card__blank-label">SEALED CASE FILE</span>
+            </div>
+          </transition>
         </div>
-      </div>
       </div>
 
       <!-- Error -->
@@ -54,6 +74,10 @@
 
       <!-- Mode Selection -->
       <div class="mode-card">
+        <template v-if="store.sessionId">
+          <p class="resume-game__label">Active investigation detected</p>
+          <button class="start-btn resume-game__btn" type="button" @click="resumeGame">RESUME GAME</button>
+        </template>
         <h3 class="mode-card__title">Select Mode</h3>
         <div class="mode-card__toggle">
           <button
@@ -69,10 +93,9 @@
         <!-- Solo mode -->
         <template v-if="selectedMode === 'standard'">
           <p class="mode-card__desc">Investigate alone. All seven rooms are yours to explore.</p>
-          <input v-model="soloName" class="npc-input" placeholder="Investigator name" />
           <button
             class="start-btn"
-            :disabled="loading"
+            :disabled="loading || !currentUsername"
             @click="startSoloSession"
           >
             <span v-if="loading">
@@ -93,8 +116,11 @@
                 <span class="team-lobby-card__eyebrow">Host a Room</span>
                 <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
                 <div class="team-lobby-card__actions">
-                  <input v-model="hostName" class="npc-input" placeholder="Host display name" />
-                  <button class="team-lobby-card__button" :disabled="loading" @click="createTeamRoom">
+                  <select v-model="hostRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="loading || !currentUsername" @click="createTeamRoom">
                     <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
                     <span v-else>Create Team Room</span>
                   </button>
@@ -108,8 +134,11 @@
                 <p class="mode-card__team-text">Enter the 6-character code from your host to join their session.</p>
                 <div class="team-lobby-card__actions">
                   <input v-model="joinCodeInput" class="npc-input" placeholder="Join code (e.g. ABC123)" maxlength="6" style="text-transform:uppercase" />
-                  <input v-model="joinName" class="npc-input" placeholder="Your display name" />
-                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim()" @click="joinExistingSession">
+                  <select v-model="joinRole" class="npc-input">
+                    <option value="investigator">Investigator</option>
+                    <option value="villain">Villain</option>
+                  </select>
+                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim() || !currentUsername" @click="joinExistingSession">
                     <span v-if="joinLoading"><span class="spinner-dot"></span> Joining...</span>
                     <span v-else>Join Session</span>
                   </button>
@@ -144,27 +173,33 @@
       </section>
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+      <img :src="cautionTapeImg" alt="" class="landing-caution-tape" aria-hidden="true" />
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
+import cautionTapeImg from '../../images/caution.webp'
+import { useAuthStore } from '../stores/authStore.js'
 
 const router = useRouter()
 const store = useGameStore()
+const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
-const soloName = ref(store.investigatorName || 'Investigator')
-const hostName = ref(store.investigatorName || 'Host Investigator')
+const hostRole = ref('investigator')
 const joinCodeInput = ref('')
-const joinName = ref('')
+const joinRole = ref('investigator')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
 const leaderboardError = ref('')
+const briefingOpen = ref(false)
+const currentUsername = computed(() => (auth.user?.username || '').trim())
 
 const rooms = [
   { id: 'shell', label: 'NovaShell', desc: 'Explore the internal filesystem' },
@@ -177,11 +212,16 @@ const rooms = [
 ]
 
 async function startSoloSession() {
+  const name = currentUsername.value
+  if (!name) {
+    error.value = 'No logged-in username found. Please log in again.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {
     store.configureTeamMode('standard')
-    await store.createSession(soloName.value.trim() || 'Investigator')
+    await store.createSession(name)
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to connect to backend. Is it running?'
@@ -195,11 +235,20 @@ async function joinExistingSession() {
     joinError.value = 'Enter a join code first.'
     return
   }
+  const name = currentUsername.value
+  if (!name) {
+    joinError.value = 'No logged-in username found. Please log in again.'
+    return
+  }
   joinLoading.value = true
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.joinTeamSession(joinCodeInput.value.trim(), joinName.value.trim() || 'Investigator')
+    await store.joinTeamSession(
+      joinCodeInput.value.trim(),
+      name,
+      joinRole.value
+    )
     router.push('/hub')
   } catch (e) {
     joinError.value = e.message || 'Could not join that session.'
@@ -209,18 +258,31 @@ async function joinExistingSession() {
 }
 
 async function createTeamRoom() {
+  const name = currentUsername.value
+  if (!name) {
+    error.value = 'No logged-in username found. Please log in again.'
+    return
+  }
   loading.value = true
   error.value = ''
   joinError.value = ''
   try {
     store.configureTeamMode('team')
-    await store.createTeamRoom(hostName.value.trim() || 'Host Investigator')
+    await store.createTeamRoom(
+      name,
+      hostRole.value
+    )
     router.push('/hub')
   } catch (e) {
     error.value = e.message || 'Failed to create a team room. Is the backend running?'
   } finally {
     loading.value = false
   }
+}
+
+function resumeGame() {
+  if (!store.sessionId) return
+  router.push('/hub')
 }
 
 function formatDuration(totalSeconds) {
@@ -243,6 +305,12 @@ onMounted(async () => {
     leaderboardError.value = e.message || 'Could not load leaderboard.'
   }
 })
+
+async function logout() {
+  await auth.logout()
+  store.resetState()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
@@ -259,19 +327,53 @@ onMounted(async () => {
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.03) 0px,
-      rgba(255, 255, 255, 0.03) 1px,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
       transparent 1px,
       transparent 8px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.015) 0px,
-      rgba(255, 255, 255, 0.015) 1px,
+      rgba(255, 255, 255, 0.01) 0px,
+      rgba(255, 255, 255, 0.01) 1px,
       transparent 1px,
       transparent 8px
     ),
-    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+    linear-gradient(135deg, #392317 0%, #2b1a12 35%, #1f130d 70%, #140b08 100%);
+}
+
+.window-corner-btn {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid rgba(255, 240, 220, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.window-corner-btn {
+  position: fixed;
+  top: 16px;
+  left: 18px;
+  z-index: 20;
+  border: 1px solid rgba(255, 240, 220, 0.4);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  min-height: 42px;
+  padding: 0 18px;
 }
 
 .landing-board {
@@ -282,6 +384,18 @@ onMounted(async () => {
   align-items: center;
   gap: 28px;
   position: relative;
+}
+
+.landing-caution-tape {
+  position: absolute;
+  right: -18px;
+  bottom: 36px;
+  width: 190px;
+  opacity: 0.72;
+  transform: rotate(-13deg);
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.42));
 }
 
 .board-thread {
@@ -306,6 +420,24 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 240, 220, 0.9);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.top-right__logout {
+  border: 1px solid rgba(255, 240, 220, 0.35);
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 240, 220, 0.95);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
 }
 
 .evidence-card {
@@ -357,25 +489,6 @@ onMounted(async () => {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-}
-
-.top-report-btn {
-  padding: 5px 12px;
-  background: rgba(200, 169, 122, 0.2);
-  border: 1px solid rgba(139, 100, 60, 0.45);
-  border-radius: 4px;
-  color: rgba(255, 220, 180, 0.85);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.top-report-btn:hover {
-  background: rgba(200, 169, 122, 0.35);
-  border-color: rgba(139, 100, 60, 0.7);
 }
 
 .case-file {
@@ -522,7 +635,9 @@ onMounted(async () => {
 
 .folder-tab {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   margin-left: 24px;
   padding: 6px 20px 4px;
   background: #c8a97a;
@@ -536,6 +651,58 @@ onMounted(async () => {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+.folder-tab--toggle {
+  border: 1px solid #6a4b33;
+  border-bottom: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.folder-tab--toggle:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.folder-tab--toggle.is-open {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 -3px 8px rgba(0, 0, 0, 0.16);
+}
+
+.folder-tab__title {
+  letter-spacing: 2px;
+}
+
+.folder-tab__state {
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  color: rgba(49, 26, 12, 0.92);
+  border-left: 1px solid rgba(90, 61, 36, 0.35);
+  padding-left: 10px;
+}
+
+.folder-tab--toggle.is-open .folder-tab__state {
+  color: #1f0e06;
+  font-weight: 800;
+}
+
+.file-reveal-enter-active,
+.file-reveal-leave-active {
+  transition: opacity 0.26s ease, transform 0.28s ease, filter 0.28s ease;
+}
+
+.file-reveal-enter-from,
+.file-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.985);
+  filter: blur(0.5px);
+}
+
+.file-reveal-enter-to,
+.file-reveal-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
 .briefing-card {
   width: 100%;
   position: relative;
@@ -543,15 +710,48 @@ onMounted(async () => {
     repeating-linear-gradient(
       180deg,
       transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
+      rgba(92, 67, 47, 0.1) 28px 29px
     ),
-    linear-gradient(180deg, #d4b896, #c8a97a);
-  border: 1px solid #a88b62;
+    linear-gradient(180deg, #c0ab87, #a68c67);
+  border: 1px solid #6a4b33;
   border-radius: 0 6px 6px 6px;
   box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 30px rgba(18, 10, 6, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  min-height: 250px;
+}
+
+.briefing-card__content {
+  position: relative;
+}
+
+.briefing-card__blank {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+}
+
+.briefing-card__blank-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: rgba(68, 46, 29, 0.6);
+  border: 1px dashed rgba(68, 46, 29, 0.45);
+  padding: 8px 12px;
+  transform: rotate(-2deg);
+}
+
+.briefing-card::before,
+.mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(140, 22, 22, 0.09), transparent 34%),
+    radial-gradient(circle at 80% 82%, rgba(0, 0, 0, 0.14), transparent 40%);
+  pointer-events: none;
 }
 
 .briefing-card::after,
@@ -600,17 +800,17 @@ onMounted(async () => {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7a5c3a;
+  color: #4c3624;
 }
 
 .card-date {
   font-size: 13px;
-  color: #a08868;
+  color: #725b46;
 }
 
 .card-summary {
   margin: 0 0 20px;
-  color: #7a5c3a;
+  color: #4e3a2b;
   line-height: 1.8;
   font-size: 16px;
 }
@@ -741,7 +941,29 @@ onMounted(async () => {
 
 @media (max-width: 640px) {
   .landing {
-    padding: 22px 14px 40px;
+    padding: 64px 14px 40px;
+  }
+
+  .window-corner-btn {
+    top: 10px;
+    left: 10px;
+    min-height: 38px;
+    padding: 0 14px;
+    font-size: 11px;
+  }
+
+  .landing-caution-tape {
+    width: 140px;
+    right: -8px;
+    bottom: 22px;
+    opacity: 0.64;
+  }
+
+  .landing-caution-tape {
+    width: 140px;
+    right: -8px;
+    bottom: 22px;
+    opacity: 0.64;
   }
 
   .top-bar {
@@ -750,11 +972,16 @@ onMounted(async () => {
     gap: 6px;
   }
 
+  .top-right {
+    flex-wrap: wrap;
+  }
+
   .card-title-block,
   .room-list li {
     grid-template-columns: 1fr;
     display: grid;
   }
+
 }
 
 .mode-card {
@@ -764,19 +991,32 @@ onMounted(async () => {
     repeating-linear-gradient(
       180deg,
       transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
+      rgba(92, 67, 47, 0.1) 28px 29px
     ),
-    linear-gradient(180deg, #d4b896, #c8a97a);
-  border: 1px solid #a88b62;
+    linear-gradient(180deg, #c0ab87, #a68c67);
+  border: 1px solid #6a4b33;
   border-radius: 6px;
   padding: 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 30px rgba(18, 10, 6, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.resume-game__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #8b3a2a;
+}
+
+.resume-game__btn {
+  margin-bottom: 4px;
 }
 
 .leaderboard-card {
@@ -869,12 +1109,184 @@ onMounted(async () => {
   color: #8f2018;
 }
 
-.mode-card__title {
-  margin: 0;
-  font-size: 14px;
+.leaderboard-card {
+  width: 100%;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d8bea0, #ccb084);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  padding: 24px 28px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.leaderboard-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.leaderboard-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
+  color: #8b3a2a;
+}
+
+.leaderboard-card__title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #5a3d24;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 100, 60, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.45);
+}
+
+.leaderboard-rank,
+.leaderboard-time,
+.leaderboard-name {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b3a2a;
+}
+
+.leaderboard-name {
+  font-size: 14px;
+  color: #5a3d24;
+}
+
+.leaderboard-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7a2f26;
+}
+
+.leaderboard-card__empty,
+.leaderboard-card__error {
+  font-size: 13px;
   color: #7a5c3a;
+}
+
+.leaderboard-card__error {
+  color: #8f2018;
+}
+
+.leaderboard-card__title {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 1px;
+  color: #5a3d24;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 100, 60, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.45);
+}
+
+.leaderboard-rank,
+.leaderboard-time,
+.leaderboard-name {
+  font-family: var(--font-mono);
+}
+
+.leaderboard-rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8b3a2a;
+}
+
+.leaderboard-name {
+  font-size: 14px;
+  color: #5a3d24;
+}
+
+.leaderboard-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7a2f26;
+}
+
+.leaderboard-card__empty,
+.leaderboard-card__error {
+  font-size: 13px;
+  color: #7a5c3a;
+}
+
+.leaderboard-card__error {
+  color: #8f2018;
+}
+
+.leaderboard-card {
+  width: 100%;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d8bea0, #ccb084);
+  border: 1px solid #a88b62;
+  border-radius: 6px;
+  padding: 24px 28px;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.leaderboard-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.leaderboard-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #4b3523;
   font-weight: 700;
 }
 

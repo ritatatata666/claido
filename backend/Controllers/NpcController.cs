@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session/{sessionId}/npc")]
+[Authorize]
 public class NpcController : ControllerBase
 {
     private readonly AiService _claude;

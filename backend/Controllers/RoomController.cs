@@ -1,13 +1,15 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
+using System.Security.Claims;
 using Claido.Models;
 using Claido.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Claido.Controllers;
 
 [ApiController]
 [Route("api/session/{sessionId}/room/{roomName}")]
+[Authorize]
 public class RoomController : ControllerBase
 {
     private const int MaxWrongAttemptsPerRoom = 5;
@@ -24,16 +26,16 @@ public class RoomController : ControllerBase
 
     private readonly AiService _claude;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
-    private readonly ConcurrentDictionary<string, LeaderboardEntry> _leaderboard;
+    private readonly UserStore _users;
 
     public RoomController(
         AiService claude,
         ConcurrentDictionary<Guid, SessionState> sessions,
-        ConcurrentDictionary<string, LeaderboardEntry> leaderboard)
+        UserStore users)
     {
         _claude = claude;
         _sessions = sessions;
-        _leaderboard = leaderboard;
+        _users = users;
     }
 
     [HttpPost("enter")]
@@ -74,6 +76,9 @@ public class RoomController : ControllerBase
     [HttpPost("validate")]
     public IActionResult Validate(Guid sessionId, string roomName, [FromBody] ValidateRequest req)
     {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(new { error = "Not authenticated." });
+
         if (!_sessions.TryGetValue(sessionId, out var session))
             return NotFound(new { error = "Session not found." });
 
@@ -190,7 +195,55 @@ public class RoomController : ControllerBase
             && parts[3] == session.VaultWord4;
     }
 
-    private IEnumerable<object> RecordSolve(SessionState session, Guid? memberId)
+    private bool TryGetUserId(out Guid userId)
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(value, out userId);
+    }
+
+    private static List<QuestionReviewEntry> BuildQuestionReview(SessionState session)
+    {
+        return new List<QuestionReviewEntry>
+        {
+            new()
+            {
+                QuestionId = "shell-1",
+                Room = "NovaShell",
+                Prompt = "What is the Shell room keyword?",
+                Solution = session.VaultWord1
+            },
+            new()
+            {
+                QuestionId = "mail-1",
+                Room = "NovaMail",
+                Prompt = "What is the Mail room keyword?",
+                Solution = session.VaultWord2
+            },
+            new()
+            {
+                QuestionId = "wiki-1",
+                Room = "NovaWiki",
+                Prompt = "What is the Wiki room keyword?",
+                Solution = session.VaultWord3
+            },
+            new()
+            {
+                QuestionId = "search-1",
+                Room = "NovaSearch",
+                Prompt = "What is the Search room keyword?",
+                Solution = session.VaultWord4
+            },
+            new()
+            {
+                QuestionId = "vault-1",
+                Room = "Vault",
+                Prompt = "What is the final four-word vault passphrase?",
+                Solution = session.VaultCode
+            }
+        };
+    }
+
+    private IEnumerable<object> RecordSolve(SessionState session)
     {
         lock (session)
         {

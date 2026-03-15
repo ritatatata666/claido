@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-const API = import.meta.env.VITE_API_BASE_URL
+const API = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const STORAGE_KEY = 'claido_session'
 const DEFAULT_VILLAIN_TOKENS = 3
 const DEFAULT_GOOD_TOKENS = 2
@@ -63,6 +63,7 @@ function persistState(state) {
       joinCode: state.joinCode,
       playerId: state.playerId,
       lockedClueIds: state.lockedClueIds,
+      protectedClueIds: state.protectedClueIds,
       investigatorName: state.investigatorName,
       leaderboard: state.leaderboard,
       notes: state.notes,
@@ -96,16 +97,24 @@ function normalizeActionLog(entries = []) {
 
 function normalizeLeaderboardEntries(entries = []) {
   return entries.map(entry => ({
-    displayName: entry.displayName ?? entry.DisplayName ?? 'Investigator',
+    displayName: entry.displayName ?? entry.DisplayName ?? 'Player',
     solveSeconds: Number(entry.solveSeconds ?? entry.SolveSeconds ?? 0),
     completedAtUtc: entry.completedAtUtc ?? entry.CompletedAtUtc ?? null,
   }))
 }
 
+function resolveGameStartTime(payload, fallback = null) {
+  const startedAt = payload?.startedAtUtc ?? payload?.StartedAtUtc
+  const parsed = startedAt ? Date.parse(startedAt) : NaN
+  if (Number.isFinite(parsed)) return parsed
+  if (typeof fallback === 'number') return fallback
+  return Date.now()
+}
+
 function initializeNewSession(state, payload) {
   state.sessionId = payload.sessionId
   state.sessionState = payload
-  state.gameStartTime = Date.now()
+  state.gameStartTime = resolveGameStartTime(payload)
   state.discoveredClues = []
   state.completedRooms = []
   state.conversationHistories = {}
@@ -116,6 +125,7 @@ function initializeNewSession(state, payload) {
   state.teamMembers = []
   state.teamActionLog = []
   state.lockedClueIds = []
+  state.protectedClueIds = []
   state.villainTokens = payload.villainTokens ?? DEFAULT_VILLAIN_TOKENS
   state.goodTokens = payload.goodTokens ?? DEFAULT_GOOD_TOKENS
   state.notes = ''
@@ -157,7 +167,8 @@ export const useGameStore = defineStore('game', {
     joinCode: _persisted.joinCode ?? '',
     playerId: _persisted.playerId ?? null,
     lockedClueIds: _persisted.lockedClueIds ?? [],
-    investigatorName: _persisted.investigatorName ?? 'Investigator',
+    protectedClueIds: _persisted.protectedClueIds ?? [],
+    investigatorName: _persisted.investigatorName ?? '',
     leaderboard: normalizeLeaderboardEntries(_persisted.leaderboard ?? []),
     notes: _persisted.notes ?? '',
     roomWrongAttempts: normalizeWrongAttemptMap(_persisted.roomWrongAttempts),
@@ -172,7 +183,7 @@ export const useGameStore = defineStore('game', {
         const me = state.teamMembers.find(member => member.memberId === state.playerId)
         if (me?.displayName) return me.displayName
       }
-      return state.investigatorName || 'Investigator'
+      return state.investigatorName || 'Player'
     },
     elapsedSeconds: (state) => {
       if (!state.gameStartTime) return 0
@@ -236,11 +247,12 @@ export const useGameStore = defineStore('game', {
       return data
     },
 
-    async createTeamRoom(displayName = 'Host Investigator') {
-      const res = await fetch(`${API}/api/session/team/create`, {
+    async createTeamRoom(displayName, preferredRole = 'investigator') {
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
+      const res = await apiFetch('/api/session/team/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify({ displayName, preferredRole }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -254,15 +266,17 @@ export const useGameStore = defineStore('game', {
       return payload
     },
 
-    async joinTeamSession(joinCode, displayName = 'Investigator') {
+    async joinTeamSession(joinCode, displayName, preferredRole = 'investigator') {
       const code = joinCode ?? this.joinCode
       if (!code) throw new Error('Join code is required.')
-      const res = await fetch(`${API}/api/session/join`, {
+      if (!String(displayName || '').trim()) throw new Error('Investigator name is required.')
+      const res = await apiFetch('/api/session/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           joinCode: code,
           displayName,
+          preferredRole,
         }),
       })
       if (!res.ok) {
@@ -278,7 +292,7 @@ export const useGameStore = defineStore('game', {
 
     async refreshTeamState() {
       if (!this.sessionId) return null
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/state`)
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/state`)
       if (!res.ok) throw new Error('Failed to refresh team state.')
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
@@ -296,6 +310,7 @@ export const useGameStore = defineStore('game', {
 
     addClue(id, room, text) {
       if (this.discoveredClues.find(c => c.id === id)) return
+      const isMaskedForInvestigator = this.teamMode === 'team' && this.teamRole === 'good' && this.lockedClueIds.includes(id)
       const clue = {
         id,
         room,
@@ -304,17 +319,43 @@ export const useGameStore = defineStore('game', {
         locked: this.lockedClueIds.includes(id),
       }
       this.discoveredClues.push(clue)
-      this.clueNotification = { text, room }
+      this.clueNotification = {
+        text: isMaskedForInvestigator ? 'Clue hidden by the saboteur — reveal it in Team Mode.' : text,
+        room,
+      }
       setTimeout(() => { this.clueNotification = null }, 3500)
+      if (this.teamMode === 'team' && this.teamRole === 'good') {
+        this.reportInvestigatorClue(id, room, text).catch(() => {})
+      }
       persistState(this)
+    },
+
+    async reportInvestigatorClue(clueId, room = '', snippet = '') {
+      if (!this.sessionId || !this.playerId || this.teamMode !== 'team' || this.teamRole !== 'good' || !clueId) return false
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/discover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: this.playerId,
+          clueId,
+          room,
+          snippet,
+        }),
+      })
+      if (!res.ok) return false
+      const payload = await res.json()
+      this.applyTeamSnapshot(payload)
+      return true
     },
 
     applyTeamSnapshot(payload, assignedRole = null, playerId = null) {
       if (!payload) return
       this.sessionState = payload
+      this.gameStartTime = resolveGameStartTime(payload, this.gameStartTime)
       this.teamMembers = normalizeTeamMembers(payload.teamMembers ?? [])
       this.teamActionLog = normalizeActionLog(payload.teamActionLog ?? [])
       this.lockedClueIds = payload.lockedClues ?? []
+      this.protectedClueIds = payload.investigatorFoundClues ?? payload.InvestigatorFoundClues ?? []
       this.villainTokens = payload.villainTokens ?? this.villainTokens
       this.goodTokens = payload.goodTokens ?? this.goodTokens
       this.teamMode = payload.teamMode ?? this.teamMode
@@ -340,7 +381,8 @@ export const useGameStore = defineStore('game', {
 
     async lockClue(clue) {
       if (!clue || !this.sessionId || !this.playerId || this.teamMode !== 'team' || this.teamRole !== 'villain') return false
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/lock`, {
+      if (this.protectedClueIds.includes(clue.id)) throw new Error('This clue was already found by investigators and can no longer be sabotaged.')
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/lock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -350,7 +392,10 @@ export const useGameStore = defineStore('game', {
           snippet: clue.text,
         }),
       })
-      if (!res.ok) throw new Error('Failed to lock clue.')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to lock clue.')
+      }
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
       return true
@@ -358,7 +403,7 @@ export const useGameStore = defineStore('game', {
 
     async unlockClue(clue) {
       if (!clue || !this.sessionId || !this.playerId || this.teamMode !== 'team') return false
-      const res = await fetch(`${API}/api/session/${this.sessionId}/team/unlock`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -368,7 +413,10 @@ export const useGameStore = defineStore('game', {
           snippet: clue.text,
         }),
       })
-      if (!res.ok) throw new Error('Failed to unlock clue.')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to unlock clue.')
+      }
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
       return true
@@ -399,7 +447,7 @@ export const useGameStore = defineStore('game', {
 
     async sendNpcMessage(npcId, message) {
       const history = this.getNpcHistory(npcId)
-      const res = await fetch(`${API}/api/session/${this.sessionId}/npc/chat`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/npc/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -419,7 +467,7 @@ export const useGameStore = defineStore('game', {
       if (this.roomCache[roomName]) {
         return this.roomCache[roomName]
       }
-      const res = await fetch(`${API}/api/session/${this.sessionId}/room/${roomName}/enter`, {
+      const res = await apiFetch(`/api/session/${this.sessionId}/room/${roomName}/enter`, {
         method: 'POST',
       })
       if (res.status === 404) throw new Error('Session expired — please start a new game.')
@@ -450,7 +498,7 @@ export const useGameStore = defineStore('game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answer,
+          answer, ...extras,
           memberId: this.playerId,
         }),
       })

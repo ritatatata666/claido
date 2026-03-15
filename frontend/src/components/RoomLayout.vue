@@ -56,6 +56,11 @@
         </button>
         <div v-if="!sidebarCollapsed" class="sidebar-content">
           <h3 class="sidebar-title">Evidence Board</h3>
+          <div v-if="store.teamMode === 'team'" class="sidebar-team-status">
+            <span v-if="isVillainView">Sabotage tokens: {{ store.villainTokens }}</span>
+            <span v-else>Counter tokens: {{ store.goodTokens }}</span>
+          </div>
+          <p v-if="teamActionError" class="sidebar-team-error">{{ teamActionError }}</p>
           <div v-if="store.discoveredClues.length === 0" class="no-clues">
             No clues found yet.
           </div>
@@ -70,10 +75,28 @@
               :class="{ 'clue-text--masked': clue.locked && isMaskedView }"
             >
               <span v-if="clue.locked && isMaskedView">
-                Clue hidden by the saboteur — use the Team Mode console to expose it.
+                Clue hidden by the saboteur.
               </span>
               <span v-else>{{ clue.text }}</span>
             </p>
+            <div v-if="store.teamMode === 'team'" class="clue-actions">
+              <button
+                v-if="canSabotageClue(clue)"
+                class="clue-action-btn clue-action-btn--sabotage"
+                :disabled="teamActionBusyClueId === clue.id"
+                @click.stop="handleSidebarLock(clue)"
+              >
+                {{ teamActionBusyClueId === clue.id ? 'Sabotaging...' : 'Sabotage (-1)' }}
+              </button>
+              <button
+                v-if="canRevealClue(clue)"
+                class="clue-action-btn clue-action-btn--reveal"
+                :disabled="teamActionBusyClueId === clue.id"
+                @click.stop="handleSidebarUnlock(clue)"
+              >
+                {{ teamActionBusyClueId === clue.id ? 'Exposing...' : 'Expose (-1)' }}
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -154,6 +177,9 @@ const menuOpen = ref(false)
 const goalsOpen = ref(false)
 const helpOpen = ref(false)
 const isMaskedView = computed(() => store.teamMode === 'team' && store.teamRole === 'good')
+const isVillainView = computed(() => store.teamMode === 'team' && store.teamRole === 'villain')
+const teamActionBusyClueId = ref('')
+const teamActionError = ref('')
 
 const rooms = [
   { id: 'shell', label: 'NovaShell' },
@@ -256,8 +282,17 @@ function closeAll() {
 // Timer
 const elapsed = ref(0)
 let timerInterval = null
+let teamRefreshInterval = null
 
 onMounted(() => {
+  if (store.teamMode === 'team' && store.sessionId) {
+    store.refreshTeamState().catch(() => {})
+    teamRefreshInterval = setInterval(() => {
+      if (store.teamMode === 'team') {
+        store.refreshTeamState().catch(() => {})
+      }
+    }, 3000)
+  }
   timerInterval = setInterval(() => {
     if (store.gameStartTime) {
       elapsed.value = Math.floor((Date.now() - store.gameStartTime) / 1000) + Math.max(0, Number(store.penaltySecondsTotal) || 0)
@@ -267,6 +302,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearInterval(timerInterval)
+  clearInterval(teamRefreshInterval)
 })
 
 const formattedTime = computed(() => {
@@ -277,6 +313,43 @@ const formattedTime = computed(() => {
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 })
+
+function canSabotageClue(clue) {
+  return isVillainView.value
+    && !clue?.locked
+    && store.villainTokens > 0
+    && !store.protectedClueIds.includes(clue.id)
+}
+
+function canRevealClue(clue) {
+  return isMaskedView.value && clue?.locked && store.goodTokens > 0
+}
+
+async function handleSidebarLock(clue) {
+  if (!canSabotageClue(clue)) return
+  teamActionBusyClueId.value = clue.id
+  teamActionError.value = ''
+  try {
+    await store.lockClue(clue)
+  } catch (err) {
+    teamActionError.value = err?.message || 'Could not sabotage that clue.'
+  } finally {
+    teamActionBusyClueId.value = ''
+  }
+}
+
+async function handleSidebarUnlock(clue) {
+  if (!canRevealClue(clue)) return
+  teamActionBusyClueId.value = clue.id
+  teamActionError.value = ''
+  try {
+    await store.unlockClue(clue)
+  } catch (err) {
+    teamActionError.value = err?.message || 'Could not expose that clue.'
+  } finally {
+    teamActionBusyClueId.value = ''
+  }
+}
 </script>
 
 <style scoped>
@@ -564,6 +637,19 @@ const formattedTime = computed(() => {
   margin-bottom: 16px;
 }
 
+.sidebar-team-status {
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.sidebar-team-error {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: var(--accent-red);
+}
+
 .no-clues {
   color: var(--text-muted);
   font-size: 12px;
@@ -611,6 +697,38 @@ const formattedTime = computed(() => {
 .clue-text--masked {
   color: #9ea0b5;
   font-style: italic;
+}
+
+.clue-actions {
+  margin-top: 8px;
+  display: flex;
+}
+
+.clue-action-btn {
+  border: 1px solid rgba(88, 63, 41, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 248, 236, 0.92);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.4px;
+  padding: 4px 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.clue-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.clue-action-btn--sabotage {
+  border-color: rgba(185, 70, 54, 0.35);
+  color: var(--accent-red);
+}
+
+.clue-action-btn--reveal {
+  border-color: rgba(48, 112, 82, 0.35);
+  color: var(--accent-green);
 }
 
 /*Progress Bar*/

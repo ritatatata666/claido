@@ -1,5 +1,7 @@
 <template>
-  <section v-if="store.teamMode === 'team'" class="team-panel">
+  <div v-if="store.teamMode === 'team'" class="team-folder-wrapper">
+    <div class="team-folder-tab">TEAM OPS</div>
+    <section class="team-panel">
     <div class="team-panel__header">
       <div>
         <p class="team-panel__label">{{ roleLabel }}</p>
@@ -84,7 +86,7 @@
             :key="clue.id"
             :value="clue.id"
           >
-            {{ clue.room }} — {{ truncate(clue.text, 40) }}
+            {{ clue.room }} — Hidden clue
           </option>
         </select>
         <button
@@ -96,6 +98,7 @@
         </button>
         <p class="team-panel__hint">Good team reveals unblock a locked clue so the final passphrase stays in reach.</p>
       </template>
+      <p v-if="actionError" class="team-panel__error">{{ actionError }}</p>
     </div>
 
     <div class="team-panel__log">
@@ -112,10 +115,11 @@
         <span class="log-text">
           {{ entry.actor === 'villain' ? 'masked' : 'revealed' }} {{ entry.room }} clue
         </span>
-        <span class="log-snippet">“{{ truncate(entry.snippet, 42) }}”</span>
+        <span class="log-snippet">“{{ displayLogSnippet(entry) }}”</span>
       </div>
     </div>
   </section>
+  </div>
 </template>
 
 <script setup>
@@ -126,9 +130,10 @@ const store = useGameStore()
 const selectedClueId = ref('')
 const isProcessing = ref(false)
 const copyFeedback = ref('')
+const actionError = ref('')
 
 const lockedClues = computed(() => store.discoveredClues.filter(c => c.locked))
-const visibleClues = computed(() => store.discoveredClues.filter(c => !c.locked))
+const visibleClues = computed(() => store.discoveredClues.filter(c => !c.locked && !store.protectedClueIds.includes(c.id)))
 
 const recentActions = computed(() => store.teamActionLog)
 
@@ -157,6 +162,13 @@ function truncate(text, max) {
   return text.length <= max ? text : `${text.slice(0, max)}…`
 }
 
+function displayLogSnippet(entry) {
+  const isInvestigator = store.teamRole !== 'villain'
+  const isVillainMaskAction = entry?.actor === 'villain' && entry?.action === 'lock'
+  if (isInvestigator && isVillainMaskAction) return 'Hidden clue'
+  return truncate(entry?.snippet || '', 42)
+}
+
 async function copyInviteCode() {
   if (!store.joinCode) return
   if (!navigator?.clipboard) {
@@ -178,11 +190,13 @@ async function handleLock() {
   const clue = visibleClues.value.find(c => c.id === selectedClueId.value)
   if (!clue) return
   isProcessing.value = true
+  actionError.value = ''
   try {
     await store.lockClue(clue)
     selectedClueId.value = visibleClues.value[0]?.id ?? ''
   } catch (err) {
     console.error(err)
+    actionError.value = err?.message || 'Could not sabotage that clue.'
   } finally {
     isProcessing.value = false
   }
@@ -193,11 +207,13 @@ async function handleUnlock() {
   const clue = lockedClues.value.find(c => c.id === selectedClueId.value)
   if (!clue) return
   isProcessing.value = true
+  actionError.value = ''
   try {
     await store.unlockClue(clue)
     selectedClueId.value = lockedClues.value[0]?.id ?? ''
   } catch (err) {
     console.error(err)
+    actionError.value = err?.message || 'Could not expose that clue.'
   } finally {
     isProcessing.value = false
   }
@@ -205,14 +221,45 @@ async function handleUnlock() {
 </script>
 
 <style scoped>
-.team-panel {
-  background: #06060b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 20px;
+.team-folder-wrapper {
+  width: 100%;
+  position: relative;
+  z-index: 2;
   margin-top: 24px;
-  color: #f5f5f7;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.team-folder-tab {
+  position: relative;
+  display: inline-block;
+  margin-left: 24px;
+  padding: 6px 20px 4px;
+  background: #c8a97a;
+  border-radius: 6px 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #5a3d24;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.team-panel {
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 28px,
+      rgba(160, 130, 95, 0.06) 28px 29px
+    ),
+    linear-gradient(180deg, #d4b896, #c8a97a);
+  border: 1px solid #a88b62;
+  border-radius: 0 6px 6px 6px;
+  padding: 24px 22px;
+  color: #3d2510;
+  box-shadow:
+    0 8px 24px rgba(80, 50, 20, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 .team-panel__header {
@@ -220,16 +267,17 @@ async function handleUnlock() {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid rgba(139, 100, 60, 0.3);
   padding-bottom: 14px;
   margin-bottom: 18px;
 }
 
 .team-panel__label {
   font-size: 12px;
-  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #9b9ba3;
+  color: #7a5c3a;
   margin: 0;
 }
 
@@ -237,12 +285,13 @@ async function handleUnlock() {
   margin: 6px 0 4px;
   font-size: 22px;
   line-height: 1.2;
+  color: #3d2510;
 }
 
 .team-panel__desc {
   margin: 0;
   font-size: 13px;
-  color: #b6b6c3;
+  color: #6b5030;
 }
 
 .team-panel__tokens {
@@ -251,9 +300,10 @@ async function handleUnlock() {
 }
 
 .token-pill {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 999px;
-  padding: 6px 14px;
+  background: rgba(90, 61, 36, 0.1);
+  border: 1px solid rgba(139, 100, 60, 0.3);
+  border-radius: 6px;
+  padding: 8px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -262,16 +312,22 @@ async function handleUnlock() {
 }
 
 .token-pill--good {
-  background: rgba(45, 158, 255, 0.15);
+  background: rgba(60, 90, 130, 0.12);
+  border-color: rgba(70, 100, 140, 0.3);
 }
 
 .token-label {
-  color: #8a8a97;
+  color: #7a5c3a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .token-value {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
+  color: #3d2510;
 }
 
 .team-panel__actions {
@@ -283,35 +339,39 @@ async function handleUnlock() {
 
 .team-panel__input-label {
   font-size: 12px;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #8a8a97;
+  color: #7a5c3a;
   margin-bottom: 4px;
 }
 
 .team-panel__select {
-  background: #0b0b12;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 8px 12px;
-  color: #fff;
+  background: rgba(255, 250, 240, 0.6);
+  border: 1px solid rgba(139, 100, 60, 0.3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #3d2510;
   font-size: 13px;
 }
 
 .team-panel__button {
-  background: linear-gradient(135deg, #ff4f78, #ffb347);
+  background: linear-gradient(180deg, #c45144, #a83c30);
   border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
+  border-radius: 6px;
+  padding: 12px 16px;
   font-size: 13px;
   font-weight: 700;
-  color: #0b0b12;
+  color: #fffaf0;
   cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 16px rgba(139, 58, 42, 0.25);
 }
 
 .team-panel__button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -319,18 +379,24 @@ async function handleUnlock() {
 
 .team-panel__button:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 12px rgba(255, 79, 120, 0.35);
+  box-shadow: 0 8px 20px rgba(185, 70, 54, 0.3);
 }
 
 .team-panel__hint {
   font-size: 12px;
-  color: #87878f;
+  color: #8b6f4e;
   margin: 0;
 }
 
+.team-panel__error {
+  font-size: 12px;
+  color: #ad3328;
+  margin: 2px 0 0;
+}
+
 .team-panel__code {
-  padding: 12px 0 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 0 6px;
+  border-bottom: 2px solid rgba(139, 100, 60, 0.3);
 }
 
 .team-panel__code-header {
@@ -342,33 +408,36 @@ async function handleUnlock() {
 
 .code-label {
   font-size: 11px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #9d9da5;
+  color: #7a5c3a;
 }
 
 .code-value {
   font-size: 24px;
   letter-spacing: 4px;
-  color: #f3f3ff;
+  color: #3d2510;
   display: block;
   margin-top: 6px;
+  font-family: var(--font-mono);
 }
 
 .code-note {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 11px;
-  color: #a6a6b3;
+  color: #8b6f4e;
 }
 
 .code-copy-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f6f6ff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 999px;
-  padding: 4px 10px;
+  background: rgba(90, 61, 36, 0.1);
+  color: #5a3d24;
+  border: 1px solid rgba(139, 100, 60, 0.3);
+  border-radius: 6px;
+  padding: 5px 12px;
   font-size: 12px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease;
@@ -380,24 +449,25 @@ async function handleUnlock() {
 }
 
 .code-copy-btn:not(:disabled):hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(90, 61, 36, 0.2);
   transform: translateY(-1px);
 }
 
 .team-panel__roster {
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 14px;
+  border-top: 2px solid rgba(139, 100, 60, 0.3);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .team-panel__roster-title {
   margin: 0;
   font-size: 13px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: #8a8a97;
+  color: #7a5c3a;
 }
 
 .team-panel__roster-item {
@@ -405,37 +475,43 @@ async function handleUnlock() {
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+  color: #3d2510;
 }
 
 .roster-role {
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 3px 10px;
+  border-radius: 4px;
   font-size: 11px;
-  letter-spacing: 0.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 .roster-role--villain {
-  background: rgba(255, 92, 92, 0.15);
-  color: #ff8b8b;
+  background: rgba(185, 70, 54, 0.15);
+  color: #8b3a2a;
+  border: 1px solid rgba(185, 70, 54, 0.3);
 }
 
 .roster-role--good {
-  background: rgba(93, 209, 255, 0.15);
-  color: #7dd7ff;
+  background: rgba(60, 100, 140, 0.12);
+  color: #3a5c7a;
+  border: 1px solid rgba(60, 100, 140, 0.25);
 }
 
 .team-panel__log-title {
   margin: 0 0 6px;
   font-size: 13px;
+  font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #8a8a97;
+  letter-spacing: 1.5px;
+  color: #7a5c3a;
 }
 
 .team-panel__log {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  padding-top: 12px;
+  border-top: 2px solid rgba(139, 100, 60, 0.3);
+  padding-top: 14px;
   max-height: 150px;
   overflow: auto;
 }
@@ -445,7 +521,7 @@ async function handleUnlock() {
   flex-direction: column;
   gap: 2px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(139, 100, 60, 0.15);
 }
 
 .team-panel__log-entry:last-child {
@@ -454,31 +530,33 @@ async function handleUnlock() {
 
 .log-role {
   font-size: 11px;
+  font-family: var(--font-mono);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .log-role--villain {
-  color: #ff5c5c;
+  color: #8b3a2a;
 }
 
 .log-role--good {
-  color: #5dd1ff;
+  color: #3a5c7a;
 }
 
 .log-text {
   font-size: 14px;
   font-weight: 600;
+  color: #3d2510;
 }
 
 .log-snippet {
   font-size: 12px;
-  color: #a0a0b0;
+  color: #8b6f4e;
 }
 
 .team-panel__log-empty {
   font-size: 12px;
-  color: #8a8a97;
+  color: #8b6f4e;
   padding: 6px 0;
 }
 </style>

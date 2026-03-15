@@ -148,6 +148,7 @@ onMounted(async () => {
 
     if (domEvent.keyCode === 8) {
       // Backspace
+      domEvent.preventDefault()
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         writeTerminal('\b \b')
@@ -164,6 +165,7 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowUp') {
+      domEvent.preventDefault()
       if (commandHistory.value.length === 0) return
       if (historyIndex > 0) historyIndex--
       const prev = commandHistory.value[historyIndex] ?? ''
@@ -174,6 +176,7 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowDown') {
+      domEvent.preventDefault()
       if (historyIndex < commandHistory.value.length - 1) {
         historyIndex++
         const next = commandHistory.value[historyIndex] ?? ''
@@ -189,6 +192,7 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowLeft' || domKey === 'ArrowRight') {
+      domEvent.preventDefault()
       return
     }
 
@@ -497,9 +501,18 @@ async function cmdBase64(args) {
   }
   try {
     const decoded = atob(value)
-    writelnTerminal(decoded)
     // Check if the decoded value matches the session vault word
     const expected = activeVaultWord1.value
+    const isShellClueLocked = store.lockedClueIds.includes('shell-vault-word')
+    const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+    const shouldMaskShellClue = Boolean(expected && decoded === expected && isShellClueLocked && isMaskedView)
+
+    if (shouldMaskShellClue) {
+      writelnTerminal('\x1b[33mClue hidden by the saboteur — reveal it in Team Mode to view this value.\x1b[0m')
+      return
+    }
+
+    writelnTerminal(decoded)
     if (expected && decoded === expected) {
       store.addClue(
         'shell-vault-word',

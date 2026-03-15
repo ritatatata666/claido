@@ -10,6 +10,7 @@ public static class SessionResponder
         return new SessionBaseResponse
         {
             SessionId = session.SessionId,
+            StartedAtUtc = session.StartedAtUtc,
             Culprit = new
             {
                 session.Culprit.Id,
@@ -46,7 +47,8 @@ public static class SessionResponder
         {
             TeamMembers = session.TeamMembers.ToList(),
             TeamActionLog = session.TeamActionLog.ToList(),
-            LockedClues = session.LockedClues.ToList()
+            LockedClues = session.LockedClues.ToList(),
+            InvestigatorFoundClues = session.InvestigatorFoundClues.ToList()
         };
         return teamResponse;
     }
