@@ -9,8 +9,17 @@
     </div>
   </Teleport>
 
+  <Teleport to="body">
+    <div v-if="showCreepyOverlay" :class="['creepy-overlay', { 'is-hub': isHub, 'is-landing': isLanding }]" aria-hidden="true">
+      <img :src="lightLeakImg" alt="" class="creepy-overlay__img creepy-overlay__img--lightleak" />
+      <img :src="shadowImg" alt="" class="creepy-overlay__img creepy-overlay__img--shadow" />
+      <img :src="fingerprintImg" alt="" class="creepy-overlay__img creepy-overlay__img--fingerprint" />
+      <img :src="handprintImg" alt="" class="creepy-overlay__img creepy-overlay__img--handprint" />
+    </div>
+  </Teleport>
+
   <div class="app-shell" :class="{ 'is-hub': isHub, 'is-landing': isLanding }">
-    <div class="app-shell__board" aria-hidden="true">
+    <div v-if="isLanding" class="app-shell__board" aria-hidden="true">
       <span class="thread thread--one"></span>
       <span class="thread thread--two"></span>
       <span class="thread thread--three"></span>
@@ -32,17 +41,23 @@ import { RouterView, useRoute } from 'vue-router'
 import ClueNotification from './components/ClueNotification.vue'
 import bloodSplatter1 from '../images/bloodSplatter1.png'
 import bloodSplatter2 from '../images/bloodSplatter2.png'
+import fingerprintImg from '../images/fingerprint.png'
+import handprintImg from '../images/handprint.png'
+import lightLeakImg from '../images/lightleak.webp'
+import shadowImg from '../images/shadow.png'
 
 const route = useRoute()
 const isHub = computed(() => route.path === '/hub')
 const isLanding = computed(() => route.path === '/')
 const showSplatters = computed(() => isHub.value || isLanding.value)
+const showCreepyOverlay = computed(() => isHub.value || isLanding.value)
 </script>
 
 <style scoped>
 .app-shell {
   position: relative;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .app-shell__board {
@@ -56,7 +71,91 @@ const showSplatters = computed(() => isHub.value || isLanding.value)
 .app-shell__content {
   position: relative;
   z-index: 1;
-  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.creepy-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.creepy-overlay__img {
+  position: absolute;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: saturate(0.65) contrast(1.05);
+}
+
+.creepy-overlay__img--lightleak {
+  top: -8%;
+  left: -4%;
+  width: 55vw;
+  max-width: 820px;
+  opacity: 0.1;
+  mix-blend-mode: screen;
+}
+
+.creepy-overlay__img--shadow {
+  left: -10%;
+  bottom: -11%;
+  width: 24vw;
+  max-width: 360px;
+  opacity: 0.11;
+  transform: rotate(5deg);
+  mix-blend-mode: multiply;
+}
+
+.creepy-overlay.is-hub .creepy-overlay__img--shadow {
+  opacity: 0.055;
+}
+
+.creepy-overlay__img--fingerprint {
+  top: 22%;
+  right: 7%;
+  width: 150px;
+  opacity: 0.14;
+  transform: rotate(8deg);
+  mix-blend-mode: multiply;
+}
+
+.creepy-overlay__img--handprint {
+  top: 11%;
+  right: 1.5%;
+  width: 150px;
+  opacity: 0.06;
+  transform: rotate(-14deg);
+  mix-blend-mode: multiply;
+}
+
+@media (max-width: 900px) {
+  .creepy-overlay__img--shadow {
+    width: 30vw;
+    left: -14%;
+    bottom: -8%;
+    opacity: 0.1;
+  }
+
+  .creepy-overlay.is-hub .creepy-overlay__img--shadow {
+    opacity: 0.045;
+  }
+
+  .creepy-overlay__img--fingerprint {
+    width: 120px;
+    right: 3%;
+  }
+
+  .creepy-overlay__img--handprint {
+    width: 106px;
+    top: 10%;
+    right: -2%;
+    opacity: 0.05;
+    transform: rotate(-12deg);
+  }
 }
 
 .thread {
@@ -69,21 +168,21 @@ const showSplatters = computed(() => isHub.value || isLanding.value)
 }
 
 .thread--one {
-  top: 16%;
+  top: 55%;
   left: 8%;
   width: 36%;
   transform: rotate(9deg);
 }
 
 .thread--two {
-  top: 28%;
+  top: 70%;
   right: 10%;
   width: 30%;
   transform: rotate(-18deg);
 }
 
 .thread--three {
-  bottom: 18%;
+  bottom: 8%;
   left: 34%;
   width: 28%;
   transform: rotate(-12deg);
@@ -103,17 +202,17 @@ const showSplatters = computed(() => isHub.value || isLanding.value)
 .pin--gold { background: #b78a2a; }
 
 .pin--one {
-  top: 15%;
+  top: 54%;
   left: 10%;
 }
 
 .pin--two {
-  top: 25%;
+  top: 68%;
   right: 12%;
 }
 
 .pin--three {
-  bottom: 17%;
+  bottom: 7%;
   left: 58%;
 }
 </style>

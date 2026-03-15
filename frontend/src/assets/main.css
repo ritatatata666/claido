@@ -1,19 +1,19 @@
 :root {
-  --bg-primary: #c09063;
-  --bg-secondary: #a9774d;
-  --bg-surface: #f6efdf;
-  --bg-surface-alt: #efe1c8;
-  --text-primary: #2b1d11;
-  --text-secondary: #584434;
-  --text-muted: #866d59;
+  --bg-primary: #4f3323;
+  --bg-secondary: #392317;
+  --bg-surface: #e6dac4;
+  --bg-surface-alt: #d3c1a4;
+  --text-primary: #24170f;
+  --text-secondary: #4f3c2f;
+  --text-muted: #78614e;
   --accent-blue: #56788c;
   --accent-green: #5f7041;
-  --accent-red: #b94636;
-  --accent-orange: #a4632f;
+  --accent-red: #a3312a;
+  --accent-orange: #8e572d;
   --accent-purple: #76557e;
-  --border-color: rgba(80, 58, 39, 0.24);
-  --paper-shadow: 0 12px 24px rgba(61, 37, 20, 0.18), 0 2px 4px rgba(61, 37, 20, 0.1);
-  --board-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -18px 40px rgba(110, 66, 33, 0.12);
+  --border-color: rgba(65, 44, 30, 0.34);
+  --paper-shadow: 0 18px 34px rgba(18, 10, 6, 0.38), 0 3px 8px rgba(18, 10, 6, 0.28);
+  --board-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 -20px 46px rgba(27, 14, 8, 0.2);
   --font-mono: 'Courier New', Courier, monospace;
   --font-sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --font-display: Georgia, 'Times New Roman', serif;
@@ -30,20 +30,51 @@
 html, body, #app {
   height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(139, 0, 0, 0.15), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(139, 90, 60, 0.25), transparent 24%),
-    linear-gradient(180deg, #8B5A3C 0%, #654029 50%, #4a2f1d 100%);
+    radial-gradient(circle at 12% 8%, rgba(138, 18, 18, 0.15), transparent 24%),
+    radial-gradient(circle at 86% 88%, rgba(120, 78, 50, 0.2), transparent 32%),
+    linear-gradient(180deg, #3a2418 0%, #29180f 52%, #170d09 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
-  overflow-x: hidden;
-  overflow-y: auto;
   position: relative;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Low-opacity scan/noise layer to unify all screens. */
+body::before {
+  background:
+    radial-gradient(circle at 20% 25%, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px),
+    radial-gradient(circle at 78% 64%, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 4px);
+  background-size: 170px 170px, 210px 210px, 100% 4px;
+  mix-blend-mode: soft-light;
+  opacity: 0.22;
+  z-index: 1;
+}
+
+/* Subtle vignette for horror atmosphere without hiding content. */
+body::after {
+  background: radial-gradient(circle at center, transparent 52%, rgba(0, 0, 0, 0.46) 100%);
+  opacity: 0.5;
+  z-index: 1;
+}
+
+#app {
+  position: relative;
+  z-index: 2;
 }
 
 /* Global Blood Splatter Effects */
@@ -147,13 +178,13 @@ button:disabled {
 }
 
 .btn-ghost {
-  background: rgba(246, 239, 223, 0.7);
+  background: rgba(219, 202, 173, 0.62);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
 }
 
 input, textarea, select {
-  background: linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(240, 229, 209, 0.96));
+  background: linear-gradient(180deg, rgba(238, 227, 203, 0.94), rgba(209, 190, 161, 0.94));
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   color: var(--text-primary);
@@ -162,7 +193,7 @@ input, textarea, select {
   padding: 8px 12px;
   transition: border-color var(--transition), box-shadow var(--transition);
   outline: none;
-  box-shadow: inset 0 1px 2px rgba(93, 68, 44, 0.08);
+  box-shadow: inset 0 1px 2px rgba(43, 30, 20, 0.22);
 }
 
 input:focus, textarea:focus, select:focus {
@@ -192,8 +223,8 @@ input:focus, textarea:focus, select:focus {
 /* Cards */
 .card {
   background:
-    linear-gradient(180deg, rgba(255, 251, 244, 0.96), rgba(244, 235, 219, 0.96)),
-    repeating-linear-gradient(0deg, transparent 0 21px, rgba(147, 118, 88, 0.07) 21px 22px);
+    linear-gradient(180deg, rgba(234, 223, 200, 0.95), rgba(211, 194, 164, 0.95)),
+    repeating-linear-gradient(0deg, transparent 0 21px, rgba(107, 82, 58, 0.09) 21px 22px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   box-shadow: var(--paper-shadow);
@@ -243,24 +274,22 @@ input:focus, textarea:focus, select:focus {
 .nova-glitch {
   position: relative;
   display: inline-block;
-  color: #00ff41;
+  color: #7bd985;
   animation: pulse-glow 2.4s ease-in-out infinite;
 }
 
 @keyframes pulse-glow {
   0%, 100% {
     text-shadow:
-      0 0 4px rgba(0, 255, 65, 0.6),
-      0 0 8px rgba(0, 255, 65, 0.4),
-      0 0 16px rgba(0, 255, 65, 0.2);
+      0 0 3px rgba(80, 165, 90, 0.45),
+      0 0 8px rgba(80, 165, 90, 0.24);
     opacity: 1;
   }
   50% {
     text-shadow:
-      0 0 8px rgba(0, 255, 65, 1),
-      0 0 20px rgba(0, 255, 65, 0.8),
-      0 0 40px rgba(0, 255, 65, 0.5),
-      0 0 60px rgba(0, 255, 65, 0.3);
+      0 0 5px rgba(95, 189, 106, 0.56),
+      0 0 14px rgba(95, 189, 106, 0.33),
+      0 0 24px rgba(95, 189, 106, 0.16);
     opacity: 0.92;
   }
 }
