@@ -106,6 +106,7 @@ Seed: {{seed}} — use this to ensure a UNIQUE, creative scenario different from
 
 Generate a corporate breach mystery with these exact fields:
 {
+  "culpritId": {{culpritId}},
   "culpritName": "FirstName LastName",
   "culpritDepartment": "one of: Engineering, Security, Finance, HR, Executive",
   "culpritRole": "job title",
@@ -125,6 +126,7 @@ Generate a corporate breach mystery with these exact fields:
 
 IMPORTANT: The culprit must have employee id {{culpritId}}. All other employees are innocent.
 Generate all 8 employees with realistic diverse names and roles. Vault words must all be DIFFERENT from each other.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
         var raw = await CompleteAsync("You are a mystery game content generator. Output only raw JSON.", prompt, 4000);
@@ -236,6 +238,7 @@ Generate a fake corporate filesystem for a CTF game. Return JSON:
 
 IMPORTANT: In /home/analyst/.env, the VAULT_WORD value must be the base64 encoding of "{{s.VaultWord1}}" (just that word, no newline).
 IMPORTANT: Every line in /home/analyst/logs/access.log must use the timestamp format [HH:MM:SS], not ISO 8601.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string ExtractLogTime(string incidentTimestamp)
@@ -268,6 +271,7 @@ Return a JSON array:
 ]
 Include emails spanning several days before incident. At least 2 emails show tension or urgency.
 One email from an unknown external address hints at a secret meeting the night of the incident.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string BuildWikiPrompt(string ctx, SessionState s) => $$"""
@@ -299,6 +303,7 @@ Return a JSON array:
   }
 ]
 Include pages about: employee handbook, security protocols, incident response, org chart, project Nova, server room access.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string BuildSearchPrompt(string ctx, SessionState s) => $$"""
@@ -319,6 +324,7 @@ Return a JSON array:
   }
 ]
 Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from employee {{ResolveWhistleblowerUserId(s)}} should be around index 30-40.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string ResolveWhistleblowerUserId(SessionState session)
@@ -357,5 +363,6 @@ Return JSON:
 }
 Generate 8 forum posts and 5 marketplace listings. One listing must be for stolen NovaCorp credentials hinting at the culprit's department.
 The forum posts should build an atmosphere of corporate espionage. One post references the incident date.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 }
