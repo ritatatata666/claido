@@ -699,7 +699,8 @@ function resolveWhistleblowerUserId() {
   const culpritId = Number(store.sessionState?.culprit?.id)
   const witness = employees.find(e => Number(e?.id) && Number(e.id) !== culpritId)
   if (witness?.id) return `${witness.id}`
-  return '1099'
+  if (employees[0]?.id) return `${employees[0].id}`
+  return null
 }
 
 function getHour(log) {
@@ -816,7 +817,7 @@ function normalizeUserId(user, whistleblowerUserId) {
 }
 
 function ensureWhistleblowerClue(entries, vaultWord4, whistleblowerUserId) {
-  if (!vaultWord4) return entries
+  if (!vaultWord4 || !whistleblowerUserId) return entries
 
   const hasValidWhistle = entries.some((log) => {
     const message = String(log.message || '').toLowerCase()
@@ -826,13 +827,10 @@ function ensureWhistleblowerClue(entries, vaultWord4, whistleblowerUserId) {
   })
   if (hasValidWhistle) return entries
 
-  const fallbackMessage = `ALERT: Unauthorized vault access flagged by whistleblower. Keyword: ${vaultWord4}.`
+  const fallbackMessage = `ALERT: Confidential witness report on unauthorized vault access. Keyword: ${vaultWord4}.`
   const whistleIndex = entries.findIndex((log) => {
     return String(log.level || '').toUpperCase() === 'ERROR'
-      && (
-        String(log.user || '').toLowerCase() === whistleblowerUserId.toLowerCase()
-        || String(log.message || '').toLowerCase().includes('whistleblower')
-      )
+      && String(log.user || '').toLowerCase() === whistleblowerUserId.toLowerCase()
   })
 
   if (whistleIndex >= 0) {

@@ -19,7 +19,7 @@ public class SessionCreator
 
     public async Task<SessionState> CreateSessionAsync()
     {
-        var generated = await _claude.GenerateSessionAsync();
+        var generated = SessionSanitizer.Normalize(await _claude.GenerateSessionAsync());
 
         var culprit = generated.Employees.FirstOrDefault(e =>
                           e.Name.Equals(generated.CulpritName, StringComparison.OrdinalIgnoreCase))
@@ -33,7 +33,7 @@ public class SessionCreator
         var session = new SessionState
         {
             Culprit = culprit,
-            Employees = generated.Employees,
+            Employees = generated.Employees.OrderBy(employee => employee.Id).ToList(),
             IncidentTimestamp = $"{generated.IncidentDate}T{generated.IncidentTime}:00",
             BadgeDiscrepancy = generated.BadgeDiscrepancy,
             Motive = generated.Motive,

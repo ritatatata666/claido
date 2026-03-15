@@ -106,6 +106,7 @@ Seed: {{seed}} — use this to ensure a UNIQUE, creative scenario different from
 
 Generate a corporate breach mystery with these exact fields:
 {
+  "culpritId": {{culpritId}},
   "culpritName": "FirstName LastName",
   "culpritDepartment": "one of: Engineering, Security, Finance, HR, Executive",
   "culpritRole": "job title",
@@ -125,6 +126,7 @@ Generate a corporate breach mystery with these exact fields:
 
 IMPORTANT: The culprit must have employee id {{culpritId}}. All other employees are innocent.
 Generate all 8 employees with realistic diverse names and roles. Vault words must all be DIFFERENT from each other.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
         var raw = await CompleteAsync("You are a mystery game content generator. Output only raw JSON.", prompt, 4000);
@@ -184,8 +186,37 @@ Generate all 8 employees with realistic diverse names and roles. Vault words mus
             raw = raw[start..end].Trim();
         }
 
-        return raw;
+        WriteRoomDebugDumpIfEnabled(roomName, session, raw);
+
+        return RoomContentSanitizer.Normalize(roomName, raw, session);
     }
+
+      private static void WriteRoomDebugDumpIfEnabled(string roomName, SessionState session, string raw)
+      {
+        if (!IsRoomDebugEnabled()) return;
+
+        try
+        {
+          var safeRoom = new string(roomName.Where(char.IsLetterOrDigit).ToArray());
+          if (string.IsNullOrWhiteSpace(safeRoom)) safeRoom = "room";
+          var fileName = $"claido-{safeRoom}-{session.SessionId:N}-{DateTime.UtcNow:yyyyMMddHHmmssfff}.raw.json";
+          var dumpPath = Path.Combine(Path.GetTempPath(), fileName);
+          File.WriteAllText(dumpPath, raw);
+          Console.WriteLine($"[RoomDebug] Saved raw {roomName} payload: {dumpPath}");
+        }
+        catch (Exception ex)
+        {
+          Console.WriteLine($"[RoomDebug] Failed to write raw {roomName} payload: {ex.Message}");
+        }
+      }
+
+      private static bool IsRoomDebugEnabled()
+      {
+        var value = Environment.GetEnvironmentVariable("CLAIDO_ROOM_DEBUG");
+        return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+          || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)
+          || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase);
+      }
 
     private static string BuildShellPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
@@ -196,7 +227,7 @@ Generate a fake corporate filesystem for a CTF game. Return JSON:
   "username": "analyst",
   "files": {
     "/home/analyst/.env": "VAULT_WORD=base64_of_{{s.VaultWord1}}\nDB_PASS=hunter2\nAPI_KEY=sk-fake-abc123",
-    "/home/analyst/logs/access.log": "fake access log with 20 lines, one suspicious entry showing employee id {{s.Culprit.Id}} accessing server room at {{s.IncidentTimestamp}}",
+    "/home/analyst/logs/access.log": "fake access log with 20 lines, formatted like [HH:MM:SS] LEVEL message, using WARN for warnings (never WARNING), including one suspicious entry showing employee id {{s.Culprit.Id}} accessing server room at [{{ExtractLogTime(s.IncidentTimestamp)}}]",
     "/home/analyst/readme.txt": "Welcome to NovaCorp internal analyst workstation.",
     "/home/analyst/notes.txt": "Reminder: badge system was offline between 01:00-03:00 on incident date.",
     "/etc/passwd": "root:x:0:0:root:/root:/bin/bash\nanalyst:x:1000:1000::/home/analyst:/bin/bash",
@@ -206,7 +237,20 @@ Generate a fake corporate filesystem for a CTF game. Return JSON:
 }
 
 IMPORTANT: In /home/analyst/.env, the VAULT_WORD value must be the base64 encoding of "{{s.VaultWord1}}" (just that word, no newline).
+IMPORTANT: Every line in /home/analyst/logs/access.log must use the timestamp format [HH:MM:SS], not ISO 8601.
+IMPORTANT: For warning severity in /home/analyst/logs/access.log, always use the token WARN, never WARNING.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
+
+    private static string ExtractLogTime(string incidentTimestamp)
+    {
+        if (DateTime.TryParse(incidentTimestamp, out var parsed))
+        {
+            return parsed.ToString("HH:mm:ss");
+        }
+
+        return "01:17:00";
+    }
 
     private static string BuildMailPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
@@ -228,6 +272,7 @@ Return a JSON array:
 ]
 Include emails spanning several days before incident. At least 2 emails show tension or urgency.
 One email from an unknown external address hints at a secret meeting the night of the incident.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string BuildWikiPrompt(string ctx, SessionState s) => $$"""
@@ -259,13 +304,14 @@ Return a JSON array:
   }
 ]
 Include pages about: employee handbook, security protocols, incident response, org chart, project Nova, server room access.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 
     private static string BuildSearchPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
 
 Generate exactly 50 fake log entries for a Kibana-style log search interface. The culprit is {{s.Culprit.Name}} (id {{s.Culprit.Id}}).
-One log entry must be from "whistleblower" with level ERROR and contain vault word "{{s.VaultWord4}}" and implicate the culprit.
+Use employee id {{ResolveWhistleblowerUserId(s)}} as the confidential witness. One log entry must have user="{{ResolveWhistleblowerUserId(s)}}" with level ERROR, contain vault word "{{s.VaultWord4}}", and implicate the culprit. Do not use the literal string "whistleblower" in the user field.
 Return a JSON array:
 [
   {
@@ -273,13 +319,20 @@ Return a JSON array:
     "timestamp": "2025-03-03T00:...",
     "level": "INFO|WARN|ERROR|DEBUG",
     "service": "auth|api|db|badge|mail|vault",
-    "user": "username or employee id",
+    "user": "employee id",
     "message": "...",
     "ip": "192.168.x.x"
   }
 ]
-Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from whistleblower should be around index 30-40.
+Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from employee {{ResolveWhistleblowerUserId(s)}} should be around index 30-40.
+STRICT OUTPUT RULES: Return a raw JSON array only (top-level must be `[...]`). No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
+
+    private static string ResolveWhistleblowerUserId(SessionState session)
+    {
+        return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString()
+            ?? session.Employees.First().Id.ToString();
+    }
 
     private static string BuildOnionPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
@@ -311,5 +364,6 @@ Return JSON:
 }
 Generate 8 forum posts and 5 marketplace listings. One listing must be for stolen NovaCorp credentials hinting at the culprit's department.
 The forum posts should build an atmosphere of corporate espionage. One post references the incident date.
+STRICT OUTPUT RULES: Return a single valid JSON object only. No markdown, no code fences, no prose, no comments, no trailing commas.
 """;
 }
