@@ -384,7 +384,7 @@ public static class RoomContentSanitizer
 
     private static string BuildSearchClueMessage(SessionState session)
     {
-        return $"ALERT: whistleblower flagged employee {session.Culprit.Id} during unauthorized vault activity. Motive keyword: {session.VaultWord4}.";
+        return $"ALERT: confidential witness report linked employee {session.Culprit.Id} to unauthorized vault activity. Motive keyword: {session.VaultWord4}.";
     }
 
     private static OnionRoomContent GetDefaultOnion(SessionState session)
@@ -426,7 +426,8 @@ public static class RoomContentSanitizer
 
     private static string ResolveWhistleblowerUserId(SessionState session)
     {
-        return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString() ?? "1099";
+        return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString()
+            ?? session.Employees.First().Id.ToString();
     }
 
     private static string BuildWikiClueSentence(string vaultWord)

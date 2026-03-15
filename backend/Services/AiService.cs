@@ -265,7 +265,7 @@ Include pages about: employee handbook, security protocols, incident response, o
 Session context: {{ctx}}
 
 Generate exactly 50 fake log entries for a Kibana-style log search interface. The culprit is {{s.Culprit.Name}} (id {{s.Culprit.Id}}).
-One log entry must be from "whistleblower" with level ERROR and contain vault word "{{s.VaultWord4}}" and implicate the culprit.
+Use employee id {{ResolveWhistleblowerUserId(s)}} as the confidential witness. One log entry must have user="{{ResolveWhistleblowerUserId(s)}}" with level ERROR, contain vault word "{{s.VaultWord4}}", and implicate the culprit. Do not use the literal string "whistleblower" in the user field.
 Return a JSON array:
 [
   {
@@ -273,13 +273,19 @@ Return a JSON array:
     "timestamp": "2025-03-03T00:...",
     "level": "INFO|WARN|ERROR|DEBUG",
     "service": "auth|api|db|badge|mail|vault",
-    "user": "username or employee id",
+    "user": "employee id",
     "message": "...",
     "ip": "192.168.x.x"
   }
 ]
-Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from whistleblower should be around index 30-40.
+  Mix of log levels. Include several suspicious entries around {{s.IncidentTimestamp}}. The ERROR from employee {{ResolveWhistleblowerUserId(s)}} should be around index 30-40.
 """;
+
+    private static string ResolveWhistleblowerUserId(SessionState session)
+    {
+      return session.Employees.FirstOrDefault(employee => employee.Id != session.Culprit.Id)?.Id.ToString()
+        ?? session.Employees.First().Id.ToString();
+    }
 
     private static string BuildOnionPrompt(string ctx, SessionState s) => $$"""
 Session context: {{ctx}}
