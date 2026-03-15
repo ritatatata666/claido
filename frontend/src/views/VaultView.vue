@@ -117,16 +117,16 @@
               Enter the four-word passphrase to unlock the vault and reveal the culprit.
             </p>
 
-            <div class="clue-reminder">
-              <div class="reminder-title">Collected clues:</div>
-              <div v-if="store.discoveredClues.length === 0" class="reminder-empty">
-                No clues yet. Return to previous rooms.
-              </div>
-              <div v-for="clue in store.discoveredClues" :key="clue.id" class="reminder-clue">
-                <span class="reminder-room">{{ clue.room }}</span>
-                {{ clue.text }}
-              </div>
-            </div>
+        <div class="clue-reminder">
+          <div class="reminder-title">Collected clues:</div>
+          <div v-if="store.discoveredClues.length === 0" class="reminder-empty">
+            No clues yet. Return to previous rooms.
+          </div>
+          <div v-for="clue in store.discoveredClues" :key="clue.id" class="reminder-clue">
+            <span class="reminder-room">{{ clue.room }}</span>
+            {{ getDisplayedClueText(clue) }}
+          </div>
+        </div>
 
             <div class="passphrase-input-wrap">
               <input
@@ -213,6 +213,12 @@ function isCurrentEntry(entry, index) {
   return currentRank.value === index
     && entry.displayName === store.currentPlayerName
     && Number(entry.solveSeconds) === Number(solveTime.value)
+}
+
+function getDisplayedClueText(clue) {
+  const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+  if (clue?.locked && isMaskedView) return 'Clue hidden by the saboteur.'
+  return clue?.text || ''
 }
 
 function dismissWinModal() {

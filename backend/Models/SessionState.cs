@@ -32,6 +32,7 @@ public class SessionState
     public List<TeamMember> TeamMembers { get; set; } = new();
     public List<TeamActionEntry> TeamActionLog { get; set; } = new();
     public HashSet<string> LockedClues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string> InvestigatorFoundClues { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public int VillainTokens { get; set; } = 3;
     public int GoodTokens { get; set; } = 2;
 }
@@ -132,6 +133,7 @@ public class LeaderboardEntry
 public class SessionBaseResponse
 {
     public Guid SessionId { get; set; }
+    public DateTime StartedAtUtc { get; set; }
     public object Culprit { get; set; } = new();
     public IEnumerable<object> Employees { get; set; } = Array.Empty<object>();
     public string IncidentTimestamp { get; set; } = "";
@@ -155,6 +157,7 @@ public class SessionTeamResponse : SessionBaseResponse
     public SessionTeamResponse(SessionBaseResponse source)
     {
         SessionId = source.SessionId;
+        StartedAtUtc = source.StartedAtUtc;
         Culprit = source.Culprit;
         Employees = source.Employees;
         IncidentTimestamp = source.IncidentTimestamp;
@@ -174,6 +177,7 @@ public class SessionTeamResponse : SessionBaseResponse
     public List<TeamMember> TeamMembers { get; set; } = new();
     public List<TeamActionEntry> TeamActionLog { get; set; } = new();
     public List<string> LockedClues { get; set; } = new();
+    public List<string> InvestigatorFoundClues { get; set; } = new();
     public Guid PlayerId { get; set; }
     public string Role { get; set; } = "";
 }

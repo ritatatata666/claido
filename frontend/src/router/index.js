@@ -49,7 +49,9 @@ export default function createAppRouter(pinia) {
 
   router.beforeEach(async (to) => {
     const auth = useAuthStore(pinia)
-    if (!auth.hasCheckedAuth) {
+    if (to.meta.requiresAuth) {
+      await auth.fetchMe().catch(() => null)
+    } else if (!auth.hasCheckedAuth) {
       await auth.fetchMe().catch(() => null)
     }
 

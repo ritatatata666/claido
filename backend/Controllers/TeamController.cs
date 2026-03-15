@@ -14,10 +14,10 @@ namespace Claido.Controllers;
 [Authorize]
 public class TeamController : ControllerBase
 {
+    private const int MaxTeamMembers = 3;
     private readonly SessionCreator _sessionCreator;
     private readonly ConcurrentDictionary<Guid, SessionState> _sessions;
     private readonly ConcurrentDictionary<string, Guid> _joinCodes;
-    private readonly Random _rng = new();
 
     public TeamController(
         SessionCreator sessionCreator,
@@ -49,9 +49,16 @@ public class TeamController : ControllerBase
             ? $"Player {session.TeamMembers.Count + 1}"
             : request.DisplayName.Trim();
 
-        TeamMember member;
+        TeamMember? member = null;
+        IActionResult? failure = null;
         lock (session)
         {
+            if (session.TeamMembers.Count >= MaxTeamMembers)
+            {
+                failure = BadRequest(new { error = $"Team is full (max {MaxTeamMembers} players)." });
+            }
+            else
+            {
             member = new TeamMember
             {
                 DisplayName = displayName,
@@ -60,7 +67,12 @@ public class TeamController : ControllerBase
             };
             session.TeamMembers.Add(member);
             session.TeamMode = "team";
+            }
         }
+        if (failure != null)
+            return failure;
+        if (member == null)
+            return BadRequest(new { error = "Failed to join team." });
 
         var response = SessionResponder.BuildTeam(session);
         response.PlayerId = member.MemberId;
@@ -145,6 +157,10 @@ public class TeamController : ControllerBase
             {
                 failure = BadRequest(new { error = "Clue already locked." });
             }
+            else if (session.InvestigatorFoundClues.Contains(request.ClueId))
+            {
+                failure = BadRequest(new { error = "Cannot sabotage a clue already found by an investigator." });
+            }
             else
             {
                 session.LockedClues.Add(request.ClueId);
@@ -201,6 +217,7 @@ public class TeamController : ControllerBase
             else
             {
                 session.LockedClues.Remove(request.ClueId);
+                session.InvestigatorFoundClues.Add(request.ClueId);
                 session.GoodTokens--;
                 AddAction(session, new TeamActionEntry
                 {
@@ -227,16 +244,28 @@ public class TeamController : ControllerBase
         return Ok(response);
     }
 
-    private string DetermineRole(SessionState session)
+    [HttpPost("{sessionId}/team/discover")]
+    public IActionResult Discover(Guid sessionId, [FromBody] TeamClueRequest request)
     {
-        if (!session.TeamMembers.Any(m => m.Role == "villain"))
-            return "villain";
+        if (string.IsNullOrWhiteSpace(request.ClueId))
+            return BadRequest(new { error = "Clue id is required." });
 
-        var villainCount = session.TeamMembers.Count(m => m.Role == "villain");
-        if (villainCount >= 2)
-            return "good";
+        if (!_sessions.TryGetValue(sessionId, out var session))
+            return NotFound(new { error = "Session not found." });
 
-        return _rng.Next(100) < 25 ? "villain" : "good";
+        var member = session.TeamMembers.FirstOrDefault(m => m.MemberId == request.MemberId);
+        if (member == null || member.Role != "good")
+            return BadRequest(new { error = "Only investigators can mark clues as found." });
+
+        lock (session)
+        {
+            session.InvestigatorFoundClues.Add(request.ClueId);
+        }
+
+        var response = SessionResponder.BuildTeam(session);
+        response.PlayerId = member.MemberId;
+        response.Role = member.Role;
+        return Ok(response);
     }
 
     private string ResolveRole(string? preferredRole, SessionState session)
@@ -247,7 +276,7 @@ public class TeamController : ControllerBase
             "villain" => "villain",
             "investigator" => "good",
             "good" => "good",
-            _ => DetermineRole(session)
+            _ => "good"
         };
     }
 
