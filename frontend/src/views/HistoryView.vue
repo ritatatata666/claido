@@ -100,7 +100,12 @@ async function loadHistory() {
   try {
     history.value = await auth.fetchHistory()
   } catch (e) {
-    error.value = e.message || 'Failed to load history.'
+    const message = e?.message || 'Failed to load history.'
+    if (message.includes('Session expired') || message.includes('Not authenticated')) {
+      router.push('/login')
+      return
+    }
+    error.value = message
   } finally {
     loading.value = false
   }

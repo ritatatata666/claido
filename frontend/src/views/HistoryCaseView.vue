@@ -114,7 +114,12 @@ async function loadCase() {
   try {
     entry.value = await auth.fetchHistoryCase(sessionId)
   } catch (e) {
-    error.value = e.message || 'Failed to load case history.'
+    const message = e?.message || 'Failed to load case history.'
+    if (message.includes('Session expired') || message.includes('Not authenticated')) {
+      router.push('/login')
+      return
+    }
+    error.value = message
   } finally {
     loading.value = false
   }

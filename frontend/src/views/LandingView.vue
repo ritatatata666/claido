@@ -7,7 +7,6 @@
         <span class="classified-badge">● Active Case</span>
         <div class="top-right">
           <span class="case-file">CASE FILE #NC-2025-0303</span>
-        <button v-if="store.sessionId" class="top-report-btn" @click="router.push('/report')">📋 Case Report</button>
           <span>Signed in as <strong>{{ auth.user?.username }}</strong></span>
           <button class="top-right__logout" @click="logout">Logout</button>
         </div>
@@ -75,6 +74,10 @@
 
       <!-- Mode Selection -->
       <div class="mode-card">
+        <template v-if="store.sessionId">
+          <p class="resume-game__label">Active investigation detected</p>
+          <button class="start-btn resume-game__btn" type="button" @click="resumeGame">RESUME GAME</button>
+        </template>
         <h3 class="mode-card__title">Select Mode</h3>
         <div class="mode-card__toggle">
           <button
@@ -90,10 +93,9 @@
         <!-- Solo mode -->
         <template v-if="selectedMode === 'standard'">
           <p class="mode-card__desc">Investigate alone. All seven rooms are yours to explore.</p>
-          <input v-model="soloName" class="npc-input" placeholder="Investigator name" />
           <button
             class="start-btn"
-            :disabled="loading || !soloName.trim()"
+            :disabled="loading || !currentUsername"
             @click="startSoloSession"
           >
             <span v-if="loading">
@@ -114,12 +116,11 @@
                 <span class="team-lobby-card__eyebrow">Host a Room</span>
                 <p class="mode-card__team-text">Create a new team session and share the join code with your crew.</p>
                 <div class="team-lobby-card__actions">
-                  <input v-model="hostName" class="npc-input" placeholder="Investigator name" />
                   <select v-model="hostRole" class="npc-input">
                     <option value="investigator">Investigator</option>
                     <option value="villain">Villain</option>
                   </select>
-                  <button class="team-lobby-card__button" :disabled="loading || !hostName.trim()" @click="createTeamRoom">
+                  <button class="team-lobby-card__button" :disabled="loading || !currentUsername" @click="createTeamRoom">
                     <span v-if="loading"><span class="spinner-dot"></span> Creating...</span>
                     <span v-else>Create Team Room</span>
                   </button>
@@ -133,12 +134,11 @@
                 <p class="mode-card__team-text">Enter the 6-character code from your host to join their session.</p>
                 <div class="team-lobby-card__actions">
                   <input v-model="joinCodeInput" class="npc-input" placeholder="Join code (e.g. ABC123)" maxlength="6" style="text-transform:uppercase" />
-                  <input v-model="joinName" class="npc-input" placeholder="Investigator name" />
                   <select v-model="joinRole" class="npc-input">
                     <option value="investigator">Investigator</option>
                     <option value="villain">Villain</option>
                   </select>
-                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim() || !joinName.trim()" @click="joinExistingSession">
+                  <button class="team-lobby-card__button" :disabled="joinLoading || !joinCodeInput.trim() || !currentUsername" @click="joinExistingSession">
                     <span v-if="joinLoading"><span class="spinner-dot"></span> Joining...</span>
                     <span v-else>Join Session</span>
                   </button>
@@ -180,7 +180,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
 import cautionTapeImg from '../../images/caution.webp'
@@ -191,17 +191,15 @@ const store = useGameStore()
 const auth = useAuthStore()
 const loading = ref(false)
 const error = ref('')
-const soloName = ref('')
-const hostName = ref('')
 const hostRole = ref('investigator')
 const joinCodeInput = ref('')
-const joinName = ref('')
 const joinRole = ref('investigator')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
 const leaderboardError = ref('')
 const briefingOpen = ref(false)
+const currentUsername = computed(() => (auth.user?.username || '').trim())
 
 const rooms = [
   { id: 'shell', label: 'NovaShell', desc: 'Explore the internal filesystem' },
@@ -214,9 +212,9 @@ const rooms = [
 ]
 
 async function startSoloSession() {
-  const name = soloName.value.trim()
+  const name = currentUsername.value
   if (!name) {
-    error.value = 'Enter investigator name.'
+    error.value = 'No logged-in username found. Please log in again.'
     return
   }
   loading.value = true
@@ -237,9 +235,9 @@ async function joinExistingSession() {
     joinError.value = 'Enter a join code first.'
     return
   }
-  const name = joinName.value.trim()
+  const name = currentUsername.value
   if (!name) {
-    joinError.value = 'Enter investigator name.'
+    joinError.value = 'No logged-in username found. Please log in again.'
     return
   }
   joinLoading.value = true
@@ -260,9 +258,9 @@ async function joinExistingSession() {
 }
 
 async function createTeamRoom() {
-  const name = hostName.value.trim()
+  const name = currentUsername.value
   if (!name) {
-    error.value = 'Enter investigator name.'
+    error.value = 'No logged-in username found. Please log in again.'
     return
   }
   loading.value = true
@@ -280,6 +278,11 @@ async function createTeamRoom() {
   } finally {
     loading.value = false
   }
+}
+
+function resumeGame() {
+  if (!store.sessionId) return
+  router.push('/hub')
 }
 
 function formatDuration(totalSeconds) {
@@ -486,25 +489,6 @@ async function logout() {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-}
-
-.top-report-btn {
-  padding: 5px 12px;
-  background: rgba(200, 169, 122, 0.2);
-  border: 1px solid rgba(139, 100, 60, 0.45);
-  border-radius: 4px;
-  color: rgba(255, 220, 180, 0.85);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.top-report-btn:hover {
-  background: rgba(200, 169, 122, 0.35);
-  border-color: rgba(139, 100, 60, 0.7);
 }
 
 .case-file {
@@ -1020,6 +1004,19 @@ async function logout() {
     0 12px 30px rgba(18, 10, 6, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.resume-game__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #8b3a2a;
+}
+
+.resume-game__btn {
+  margin-bottom: 4px;
 }
 
 .leaderboard-card {

@@ -14,6 +14,10 @@ async function apiFetch(path, options = {}) {
   }
 }
 
+function isUnauthorizedResponse(res) {
+  return res?.status === 401
+}
+
 function loadPersistedUser() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -91,6 +95,12 @@ export const useAuthStore = defineStore('auth', {
       const res = await apiFetch('/api/auth/history', {
         method: 'GET',
       })
+      if (isUnauthorizedResponse(res)) {
+        this.user = null
+        this.hasCheckedAuth = true
+        persistUser(null)
+        throw new Error('Session expired. Please sign in again.')
+      }
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}))
         throw new Error(payload?.error || 'Failed to fetch history.')
@@ -102,6 +112,12 @@ export const useAuthStore = defineStore('auth', {
       const res = await apiFetch(`/api/auth/history/${sessionId}`, {
         method: 'GET',
       })
+      if (isUnauthorizedResponse(res)) {
+        this.user = null
+        this.hasCheckedAuth = true
+        persistUser(null)
+        throw new Error('Session expired. Please sign in again.')
+      }
       if (!res.ok) {
         const payload = await res.json().catch(() => ({}))
         throw new Error(payload?.error || 'Failed to fetch case history.')

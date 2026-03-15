@@ -215,6 +215,14 @@
           ]
         }
       ]
+    },
+    {
+      "userId": "2a226586-1081-4698-bda5-3875ee002baf",
+      "username": "Yajna",
+      "passwordHashBase64": "7U8dcvy5PSpca0n2kH9HQBLbnkvGL5V\u002BoUZInWN/vUs=",
+      "passwordSaltBase64": "nRYRYM20uiefGu\u002B2wBd58Q==",
+      "createdAtUtc": "2026-03-15T04:37:04.860892Z",
+      "history": []
     }
   ]
 }

@@ -86,7 +86,7 @@
             :key="clue.id"
             :value="clue.id"
           >
-            {{ clue.room }} — {{ truncate(clue.text, 40) }}
+            {{ clue.room }} — Hidden clue
           </option>
         </select>
         <button
@@ -98,6 +98,7 @@
         </button>
         <p class="team-panel__hint">Good team reveals unblock a locked clue so the final passphrase stays in reach.</p>
       </template>
+      <p v-if="actionError" class="team-panel__error">{{ actionError }}</p>
     </div>
 
     <div class="team-panel__log">
@@ -114,7 +115,7 @@
         <span class="log-text">
           {{ entry.actor === 'villain' ? 'masked' : 'revealed' }} {{ entry.room }} clue
         </span>
-        <span class="log-snippet">“{{ truncate(entry.snippet, 42) }}”</span>
+        <span class="log-snippet">“{{ displayLogSnippet(entry) }}”</span>
       </div>
     </div>
   </section>
@@ -129,9 +130,10 @@ const store = useGameStore()
 const selectedClueId = ref('')
 const isProcessing = ref(false)
 const copyFeedback = ref('')
+const actionError = ref('')
 
 const lockedClues = computed(() => store.discoveredClues.filter(c => c.locked))
-const visibleClues = computed(() => store.discoveredClues.filter(c => !c.locked))
+const visibleClues = computed(() => store.discoveredClues.filter(c => !c.locked && !store.protectedClueIds.includes(c.id)))
 
 const recentActions = computed(() => store.teamActionLog)
 
@@ -160,6 +162,13 @@ function truncate(text, max) {
   return text.length <= max ? text : `${text.slice(0, max)}…`
 }
 
+function displayLogSnippet(entry) {
+  const isInvestigator = store.teamRole !== 'villain'
+  const isVillainMaskAction = entry?.actor === 'villain' && entry?.action === 'lock'
+  if (isInvestigator && isVillainMaskAction) return 'Hidden clue'
+  return truncate(entry?.snippet || '', 42)
+}
+
 async function copyInviteCode() {
   if (!store.joinCode) return
   if (!navigator?.clipboard) {
@@ -181,11 +190,13 @@ async function handleLock() {
   const clue = visibleClues.value.find(c => c.id === selectedClueId.value)
   if (!clue) return
   isProcessing.value = true
+  actionError.value = ''
   try {
     await store.lockClue(clue)
     selectedClueId.value = visibleClues.value[0]?.id ?? ''
   } catch (err) {
     console.error(err)
+    actionError.value = err?.message || 'Could not sabotage that clue.'
   } finally {
     isProcessing.value = false
   }
@@ -196,11 +207,13 @@ async function handleUnlock() {
   const clue = lockedClues.value.find(c => c.id === selectedClueId.value)
   if (!clue) return
   isProcessing.value = true
+  actionError.value = ''
   try {
     await store.unlockClue(clue)
     selectedClueId.value = lockedClues.value[0]?.id ?? ''
   } catch (err) {
     console.error(err)
+    actionError.value = err?.message || 'Could not expose that clue.'
   } finally {
     isProcessing.value = false
   }
@@ -373,6 +386,12 @@ async function handleUnlock() {
   font-size: 12px;
   color: #8b6f4e;
   margin: 0;
+}
+
+.team-panel__error {
+  font-size: 12px;
+  color: #ad3328;
+  margin: 2px 0 0;
 }
 
 .team-panel__code {

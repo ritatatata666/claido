@@ -59,6 +59,7 @@ function persistState(state) {
       joinCode: state.joinCode,
       playerId: state.playerId,
       lockedClueIds: state.lockedClueIds,
+      protectedClueIds: state.protectedClueIds,
       investigatorName: state.investigatorName,
       leaderboard: state.leaderboard,
       notes: state.notes,
@@ -95,10 +96,18 @@ function normalizeLeaderboardEntries(entries = []) {
   }))
 }
 
+function resolveGameStartTime(payload, fallback = null) {
+  const startedAt = payload?.startedAtUtc ?? payload?.StartedAtUtc
+  const parsed = startedAt ? Date.parse(startedAt) : NaN
+  if (Number.isFinite(parsed)) return parsed
+  if (typeof fallback === 'number') return fallback
+  return Date.now()
+}
+
 function initializeNewSession(state, payload) {
   state.sessionId = payload.sessionId
   state.sessionState = payload
-  state.gameStartTime = Date.now()
+  state.gameStartTime = resolveGameStartTime(payload)
   state.discoveredClues = []
   state.completedRooms = []
   state.conversationHistories = {}
@@ -107,6 +116,7 @@ function initializeNewSession(state, payload) {
   state.teamMembers = []
   state.teamActionLog = []
   state.lockedClueIds = []
+  state.protectedClueIds = []
   state.villainTokens = payload.villainTokens ?? DEFAULT_VILLAIN_TOKENS
   state.goodTokens = payload.goodTokens ?? DEFAULT_GOOD_TOKENS
   state.notes = ''
@@ -143,6 +153,7 @@ export const useGameStore = defineStore('game', {
     joinCode: _persisted.joinCode ?? '',
     playerId: _persisted.playerId ?? null,
     lockedClueIds: _persisted.lockedClueIds ?? [],
+    protectedClueIds: _persisted.protectedClueIds ?? [],
     investigatorName: _persisted.investigatorName ?? '',
     leaderboard: normalizeLeaderboardEntries(_persisted.leaderboard ?? []),
     notes: _persisted.notes ?? '',
@@ -184,6 +195,7 @@ export const useGameStore = defineStore('game', {
       this.joinCode = ''
       this.playerId = null
       this.lockedClueIds = []
+      this.protectedClueIds = []
       this.investigatorName = ''
       persistState(this)
     },
@@ -270,6 +282,7 @@ export const useGameStore = defineStore('game', {
 
     addClue(id, room, text) {
       if (this.discoveredClues.find(c => c.id === id)) return
+      const isMaskedForInvestigator = this.teamMode === 'team' && this.teamRole === 'good' && this.lockedClueIds.includes(id)
       const clue = {
         id,
         room,
@@ -278,17 +291,43 @@ export const useGameStore = defineStore('game', {
         locked: this.lockedClueIds.includes(id),
       }
       this.discoveredClues.push(clue)
-      this.clueNotification = { text, room }
+      this.clueNotification = {
+        text: isMaskedForInvestigator ? 'Clue hidden by the saboteur — reveal it in Team Mode.' : text,
+        room,
+      }
       setTimeout(() => { this.clueNotification = null }, 3500)
+      if (this.teamMode === 'team' && this.teamRole === 'good') {
+        this.reportInvestigatorClue(id, room, text).catch(() => {})
+      }
       persistState(this)
+    },
+
+    async reportInvestigatorClue(clueId, room = '', snippet = '') {
+      if (!this.sessionId || !this.playerId || this.teamMode !== 'team' || this.teamRole !== 'good' || !clueId) return false
+      const res = await apiFetch(`/api/session/${this.sessionId}/team/discover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: this.playerId,
+          clueId,
+          room,
+          snippet,
+        }),
+      })
+      if (!res.ok) return false
+      const payload = await res.json()
+      this.applyTeamSnapshot(payload)
+      return true
     },
 
     applyTeamSnapshot(payload, assignedRole = null, playerId = null) {
       if (!payload) return
       this.sessionState = payload
+      this.gameStartTime = resolveGameStartTime(payload, this.gameStartTime)
       this.teamMembers = normalizeTeamMembers(payload.teamMembers ?? [])
       this.teamActionLog = normalizeActionLog(payload.teamActionLog ?? [])
       this.lockedClueIds = payload.lockedClues ?? []
+      this.protectedClueIds = payload.investigatorFoundClues ?? payload.InvestigatorFoundClues ?? []
       this.villainTokens = payload.villainTokens ?? this.villainTokens
       this.goodTokens = payload.goodTokens ?? this.goodTokens
       this.teamMode = payload.teamMode ?? this.teamMode
@@ -314,6 +353,7 @@ export const useGameStore = defineStore('game', {
 
     async lockClue(clue) {
       if (!clue || !this.sessionId || !this.playerId || this.teamMode !== 'team' || this.teamRole !== 'villain') return false
+      if (this.protectedClueIds.includes(clue.id)) throw new Error('This clue was already found by investigators and can no longer be sabotaged.')
       const res = await apiFetch(`/api/session/${this.sessionId}/team/lock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -324,7 +364,10 @@ export const useGameStore = defineStore('game', {
           snippet: clue.text,
         }),
       })
-      if (!res.ok) throw new Error('Failed to lock clue.')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to lock clue.')
+      }
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
       return true
@@ -342,7 +385,10 @@ export const useGameStore = defineStore('game', {
           snippet: clue.text,
         }),
       })
-      if (!res.ok) throw new Error('Failed to unlock clue.')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to unlock clue.')
+      }
       const payload = await res.json()
       this.applyTeamSnapshot(payload)
       return true

@@ -81,7 +81,7 @@
           </div>
           <div v-for="clue in store.discoveredClues" :key="clue.id" class="reminder-clue">
             <span class="reminder-room">{{ clue.room }}</span>
-            {{ clue.text }}
+            {{ getDisplayedClueText(clue) }}
           </div>
         </div>
 
@@ -167,6 +167,12 @@ function isCurrentEntry(entry, index) {
   return currentRank.value === index
     && entry.displayName === store.currentPlayerName
     && Number(entry.solveSeconds) === Number(solveTime.value)
+}
+
+function getDisplayedClueText(clue) {
+  const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+  if (clue?.locked && isMaskedView) return 'Clue hidden by the saboteur.'
+  return clue?.text || ''
 }
 
 async function submit() {

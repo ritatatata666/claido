@@ -86,11 +86,27 @@ onMounted(async () => {
   writelnTerminal('')
   prompt()
 
-  term.onKey(({ key, domEvent }) => {
-    domEvent.preventDefault()
+  term.onKey(({ domEvent }) => {
     const domKey = domEvent.key
+    const lowerDomKey = domKey.toLowerCase()
+    const hasShortcutModifier = domEvent.ctrlKey || domEvent.metaKey
+
+    // Let browser/xterm handle native clipboard shortcuts.
+    if (
+      hasShortcutModifier &&
+      !domEvent.altKey &&
+      (
+        (lowerDomKey === 'c' && term.hasSelection()) ||
+        lowerDomKey === 'v' ||
+        lowerDomKey === 'x'
+      )
+    ) {
+      return
+    }
+
     if (domEvent.keyCode === 13) {
       // Enter
+      domEvent.preventDefault()
       const cmd = inputBuffer.trim()
       writelnTerminal('')
       if (cmd) {
@@ -106,6 +122,7 @@ onMounted(async () => {
 
     if (domEvent.keyCode === 8) {
       // Backspace
+      domEvent.preventDefault()
       if (inputBuffer.length > 0) {
         inputBuffer = inputBuffer.slice(0, -1)
         writeTerminal('\b \b')
@@ -113,8 +130,9 @@ onMounted(async () => {
       return
     }
 
-    if (domEvent.ctrlKey && domKey.toLowerCase() === 'c') {
+    if (hasShortcutModifier && lowerDomKey === 'c') {
       // Ctrl+C
+      domEvent.preventDefault()
       writelnTerminal('^C')
       inputBuffer = ''
       prompt()
@@ -122,6 +140,7 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowUp') {
+      domEvent.preventDefault()
       if (commandHistory.value.length === 0) return
       if (historyIndex > 0) historyIndex--
       const prev = commandHistory.value[historyIndex] ?? ''
@@ -132,6 +151,7 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowDown') {
+      domEvent.preventDefault()
       if (historyIndex < commandHistory.value.length - 1) {
         historyIndex++
         const next = commandHistory.value[historyIndex] ?? ''
@@ -147,15 +167,19 @@ onMounted(async () => {
     }
 
     if (domKey === 'ArrowLeft' || domKey === 'ArrowRight') {
+      domEvent.preventDefault()
       return
     }
+  })
 
-    if ((domKey && domKey.length === 1) || domKey === '\t') {
-      // Printable chars — also handles paste (multi-char data)
-      inputBuffer += key
-      writeTerminal(key)
-      historyIndex = commandHistory.value.length
+  term.onData((data) => {
+    // Enter/backspace/Ctrl+C and escape sequences are handled in onKey.
+    if (data === '\r' || data === '\u007f' || data === '\u0003' || data.startsWith('\x1b')) {
+      return
     }
+    inputBuffer += data
+    writeTerminal(data)
+    historyIndex = commandHistory.value.length
   })
 })
 
@@ -429,9 +453,18 @@ function cmdBase64(args) {
   }
   try {
     const decoded = atob(value)
-    writelnTerminal(decoded)
     // Check if the decoded value matches the session vault word
     const expected = activeVaultWord1.value
+    const isShellClueLocked = store.lockedClueIds.includes('shell-vault-word')
+    const isMaskedView = store.teamMode === 'team' && store.teamRole === 'good'
+    const shouldMaskShellClue = Boolean(expected && decoded === expected && isShellClueLocked && isMaskedView)
+
+    if (shouldMaskShellClue) {
+      writelnTerminal('\x1b[33mClue hidden by the saboteur — reveal it in Team Mode to view this value.\x1b[0m')
+      return
+    }
+
+    writelnTerminal(decoded)
     if (expected && decoded === expected) {
       store.addClue(
         'shell-vault-word',

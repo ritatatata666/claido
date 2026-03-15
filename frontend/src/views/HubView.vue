@@ -27,6 +27,7 @@
         <div class="hub-timer evidence-mini-note">
           <span class="timer-label">Elapsed</span>
           <span class="timer-val">{{ formattedTime }}</span>
+          <button type="button" class="hub-home-link" @click="goToLanding">Back to Files</button>
         </div>
       </header>
 
@@ -263,6 +264,10 @@ function getRoomStatus(roomId) {
 
 function enterRoom(room) {
   router.push(room.route)
+}
+
+function goToLanding() {
+  router.push('/')
 }
 
 const clearedCount = computed(() =>
@@ -1163,6 +1168,27 @@ const formattedTime = computed(() => {
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+}
+
+.hub-home-link {
+  margin-top: 4px;
+  border: 1px solid rgba(83, 58, 38, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 246, 227, 0.86);
+  color: #583a23;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.14s ease, transform 0.14s ease;
+}
+
+.hub-home-link:hover {
+  background: rgba(248, 228, 191, 0.95);
+  transform: translateY(-1px);
 }
 
 .timer-val {

@@ -45,6 +45,7 @@ public class SessionController : ControllerBase
             return Ok(new
             {
                 sessionId = session.SessionId,
+                startedAtUtc = session.StartedAtUtc,
                 investigatorName = session.InvestigatorName,
                 culprit = new { session.Culprit.Id, session.Culprit.Name, session.Culprit.Department, session.Culprit.Role },                
                 employees = session.Employees,
