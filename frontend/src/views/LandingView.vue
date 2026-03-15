@@ -21,31 +21,47 @@
 
       <!-- Briefing card styled as manila case folder -->
       <div class="folder-wrapper">
-        <div class="folder-tab">CASE REPORT</div>
-        <div class="briefing-card">
-        <div class="watermark">TOP SECRET</div>
-        <div class="card-inner">
-          <div class="card-header">
-            <div class="card-title-block">
-              <span class="card-stamp-label">INCIDENT REPORT</span>
-              <span class="card-date">2025-03-03</span>
+        <button
+          class="folder-tab folder-tab--toggle"
+          :class="{ 'is-open': briefingOpen }"
+          type="button"
+          :aria-expanded="briefingOpen ? 'true' : 'false'"
+          @click="briefingOpen = !briefingOpen"
+        >
+          <span class="folder-tab__title">CASE REPORT</span>
+          <span class="folder-tab__state">{{ briefingOpen ? 'CLOSE FILE' : 'REVEAL FILE' }}</span>
+        </button>
+        <div class="briefing-card" :class="{ 'is-revealed': briefingOpen }">
+          <transition name="file-reveal" mode="out-in">
+            <div v-if="briefingOpen" key="open" class="briefing-card__content">
+              <div class="watermark">TOP SECRET</div>
+              <div class="card-inner">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <span class="card-stamp-label">INCIDENT REPORT</span>
+                    <span class="card-date">2025-03-03</span>
+                  </div>
+                </div>
+                <p class="card-summary">
+                  A corporate breach occurred overnight at NovaCorp headquarters.
+                  Sensitive vault data was compromised. The culprit is still at large.
+                  You have been deployed as a forensic investigator with access to
+                  seven internal systems. Find the culprit. Unlock the vault.
+                </p>
+                <ul class="room-list">
+                  <li v-for="room in rooms" :key="room.id">
+                    <span class="bullet">▪</span>
+                    <strong>{{ room.label }}</strong> — {{ room.desc }}
+                  </li>
+                </ul>
+                <div class="declassified-stamp">DECLASSIFIED</div>
+              </div>
             </div>
-          </div>
-          <p class="card-summary">
-            A corporate breach occurred overnight at NovaCorp headquarters.
-            Sensitive vault data was compromised. The culprit is still at large.
-            You have been deployed as a forensic investigator with access to
-            seven internal systems. Find the culprit. Unlock the vault.
-          </p>
-          <ul class="room-list">
-            <li v-for="room in rooms" :key="room.id">
-              <span class="bullet">▪</span>
-              <strong>{{ room.label }}</strong> — {{ room.desc }}
-            </li>
-          </ul>
-          <div class="declassified-stamp">DECLASSIFIED</div>
+            <div v-else key="closed" class="briefing-card__blank" aria-hidden="true">
+              <span class="briefing-card__blank-label">SEALED CASE FILE</span>
+            </div>
+          </transition>
         </div>
-      </div>
       </div>
 
       <!-- Error -->
@@ -119,6 +135,7 @@
       </div>
 
       <p class="disclaimer">Session expires when tab closes. Each case is AI-generated.</p>
+      <img :src="cautionTapeImg" alt="" class="landing-caution-tape" aria-hidden="true" />
     </div>
   </div>
 </template>
@@ -127,6 +144,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGameStore } from '../stores/gameStore.js'
+import cautionTapeImg from '../../images/caution.webp'
 
 const router = useRouter()
 const store = useGameStore()
@@ -137,6 +155,7 @@ const joinName = ref('')
 const joinLoading = ref(false)
 const joinError = ref('')
 const selectedMode = ref('standard')
+const briefingOpen = ref(false)
 
 const rooms = [
   { id: 'shell', label: 'NovaShell', desc: 'Explore the internal filesystem' },
@@ -210,19 +229,19 @@ async function createTeamRoom() {
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.03) 0px,
-      rgba(255, 255, 255, 0.03) 1px,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
       transparent 1px,
       transparent 8px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.015) 0px,
-      rgba(255, 255, 255, 0.015) 1px,
+      rgba(255, 255, 255, 0.01) 0px,
+      rgba(255, 255, 255, 0.01) 1px,
       transparent 1px,
       transparent 8px
     ),
-    linear-gradient(135deg, #8B5A3C 0%, #6d4730 30%, #5a3a26 70%, #4a2f1d 100%);
+    linear-gradient(135deg, #392317 0%, #2b1a12 35%, #1f130d 70%, #140b08 100%);
 }
 
 .landing-board {
@@ -233,6 +252,18 @@ async function createTeamRoom() {
   align-items: center;
   gap: 28px;
   position: relative;
+}
+
+.landing-caution-tape {
+  position: absolute;
+  right: -18px;
+  bottom: 36px;
+  width: 190px;
+  opacity: 0.72;
+  transform: rotate(-13deg);
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.42));
 }
 
 .board-thread {
@@ -454,7 +485,9 @@ async function createTeamRoom() {
 
 .folder-tab {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   margin-left: 24px;
   padding: 6px 20px 4px;
   background: #c8a97a;
@@ -468,6 +501,58 @@ async function createTeamRoom() {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+.folder-tab--toggle {
+  border: 1px solid #6a4b33;
+  border-bottom: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.folder-tab--toggle:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.folder-tab--toggle.is-open {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 -3px 8px rgba(0, 0, 0, 0.16);
+}
+
+.folder-tab__title {
+  letter-spacing: 2px;
+}
+
+.folder-tab__state {
+  font-size: 9px;
+  letter-spacing: 1.3px;
+  color: rgba(49, 26, 12, 0.92);
+  border-left: 1px solid rgba(90, 61, 36, 0.35);
+  padding-left: 10px;
+}
+
+.folder-tab--toggle.is-open .folder-tab__state {
+  color: #1f0e06;
+  font-weight: 800;
+}
+
+.file-reveal-enter-active,
+.file-reveal-leave-active {
+  transition: opacity 0.26s ease, transform 0.28s ease, filter 0.28s ease;
+}
+
+.file-reveal-enter-from,
+.file-reveal-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.985);
+  filter: blur(0.5px);
+}
+
+.file-reveal-enter-to,
+.file-reveal-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
 .briefing-card {
   width: 100%;
   position: relative;
@@ -475,15 +560,48 @@ async function createTeamRoom() {
     repeating-linear-gradient(
       180deg,
       transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
+      rgba(92, 67, 47, 0.1) 28px 29px
     ),
-    linear-gradient(180deg, #d4b896, #c8a97a);
-  border: 1px solid #a88b62;
+    linear-gradient(180deg, #c0ab87, #a68c67);
+  border: 1px solid #6a4b33;
   border-radius: 0 6px 6px 6px;
   box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 30px rgba(18, 10, 6, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  min-height: 250px;
+}
+
+.briefing-card__content {
+  position: relative;
+}
+
+.briefing-card__blank {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+}
+
+.briefing-card__blank-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: rgba(68, 46, 29, 0.6);
+  border: 1px dashed rgba(68, 46, 29, 0.45);
+  padding: 8px 12px;
+  transform: rotate(-2deg);
+}
+
+.briefing-card::before,
+.mode-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(140, 22, 22, 0.09), transparent 34%),
+    radial-gradient(circle at 80% 82%, rgba(0, 0, 0, 0.14), transparent 40%);
+  pointer-events: none;
 }
 
 .briefing-card::after,
@@ -532,17 +650,17 @@ async function createTeamRoom() {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7a5c3a;
+  color: #4c3624;
 }
 
 .card-date {
   font-size: 13px;
-  color: #a08868;
+  color: #725b46;
 }
 
 .card-summary {
   margin: 0 0 20px;
-  color: #7a5c3a;
+  color: #4e3a2b;
   line-height: 1.8;
   font-size: 16px;
 }
@@ -676,6 +794,13 @@ async function createTeamRoom() {
     padding: 22px 14px 40px;
   }
 
+  .landing-caution-tape {
+    width: 140px;
+    right: -8px;
+    bottom: 22px;
+    opacity: 0.64;
+  }
+
   .top-bar {
     flex-direction: column;
     align-items: flex-start;
@@ -696,19 +821,19 @@ async function createTeamRoom() {
     repeating-linear-gradient(
       180deg,
       transparent 0 28px,
-      rgba(160, 130, 95, 0.06) 28px 29px
+      rgba(92, 67, 47, 0.1) 28px 29px
     ),
-    linear-gradient(180deg, #d4b896, #c8a97a);
-  border: 1px solid #a88b62;
+    linear-gradient(180deg, #c0ab87, #a68c67);
+  border: 1px solid #6a4b33;
   border-radius: 6px;
   padding: 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   box-shadow:
-    0 8px 24px rgba(80, 50, 20, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+    0 12px 30px rgba(18, 10, 6, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
 }
 
 .mode-card__title {
@@ -716,7 +841,7 @@ async function createTeamRoom() {
   font-size: 14px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #7a5c3a;
+  color: #4b3523;
   font-weight: 700;
 }
 
